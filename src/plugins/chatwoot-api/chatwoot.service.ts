@@ -336,16 +336,20 @@ export class ChatwootService {
             const created_at_raw = m.created_at;
             const created_at_ms = typeof created_at_raw === 'number' && created_at_raw < 1e12 ? created_at_raw * 1000 : created_at_raw;
             const side = direction === 'incoming' ? 'visitor' : 'agent';
+            const isSystem = direction === 'note';
+            const sender_name = m.sender?.name || (isSystem ? 'System' : side === 'agent' ? 'Agent' : 'You');
             return {
                 ...m,
                 message_type: original_message_type, // preserve numeric
                 direction,
                 side,
-                isAdmin: direction === 'outgoing',
-                isAnonymous: direction !== 'outgoing',
+                isAdmin: direction === 'outgoing' || isSystem,
+                isAnonymous: direction === 'incoming',
                 sender: m.sender,
                 original_message_type,
                 created_at_ms,
+                isSystem,
+                sender_name,
             };
         }).sort((a, b) => {
             const at = a.created_at_ms || 0;
@@ -512,24 +516,35 @@ export class ChatwootService {
         if (agent) {
             this.log('Admin message sent by agent', { agentId: agent.id, agentName: agent.name });
         }
-        // Temporarily swap token if agentApiToken is configured to attribute message to an agent user
-        if (this.options.agentApiToken) {
-            const original = this.options.apiToken;
-            const originalAcct = this.options.accountId;
-            try {
+        // Admin panel always uses the main apiToken
+        return this.sendMessage(conversationId, content, 'outgoing');
+    }
+
+    async resolveConversationAsAgent(conversationId: number): Promise<boolean> {
+        // Use agent credentials if provided
+        const originalToken = this.options.apiToken;
+        const originalAcct = this.options.accountId;
+        try {
+            if (this.options.agentApiToken) {
                 (this.options as any).apiToken = this.options.agentApiToken;
                 if (this.options.agentAccountId) {
                     (this.options as any).accountId = this.options.agentAccountId;
                 }
-                return await this.sendMessage(conversationId, content, 'outgoing');
-            } finally {
-                (this.options as any).apiToken = original;
-                if (this.options.agentAccountId) {
-                    (this.options as any).accountId = originalAcct;
-                }
+            }
+            const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/toggle_status`;
+            const res = await fetchFn(url, { method: 'POST', headers: this.headers() });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`resolve_failed ${res.status} ${text}`);
+            }
+            return true;
+        } finally {
+            // restore
+            (this.options as any).apiToken = originalToken;
+            if (this.options.agentAccountId) {
+                (this.options as any).accountId = originalAcct;
             }
         }
-        return this.sendMessage(conversationId, content, 'outgoing'); // Fallback
     }
 
     // Enhanced agent management
@@ -609,54 +624,27 @@ export class ChatwootService {
     // Enhanced message listing with meta information
     async listMessagesWithMeta(conversationId: number, limit = 20): Promise<{ messages: any[], meta?: any }> {
         await this.ensureCacheLoaded();
-        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
-        
-    const res = await fetchFn(url, { headers: this.headers() });
+        // Remove after/before parameters which caused empty payloads in some Chatwoot deployments
+        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?page=1&per_page=${limit}`;
+        const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
             const text = await res.text();
             throw new Error(`Chatwoot listMessages failed: ${res.status} ${text}`);
         }
-        
         const json: any = await res.json();
         let items: any[] = [];
         let meta: any = {};
-        
         if (json?.payload && Array.isArray(json.payload)) {
             items = json.payload;
             meta = json.meta || {};
-        } else if (Array.isArray(json?.data)) {
-            items = json.data;
         } else if (Array.isArray(json)) {
             items = json;
+        } else if (Array.isArray(json?.data)) {
+            items = json.data;
         }
-
-        const decorated = items.map(m => {
-            const isOutgoing = m.message_type === 1;
-            let direction = isOutgoing ? 'outgoing' : 'incoming';
-
-            if (direction === 'outgoing' && m?.content_attributes?.public_user) {
-                direction = 'incoming';
-            }
-            
-            return {
-                ...m,
-                message_type: direction,
-                direction,
-                side: direction === 'outgoing' ? 'agent' : 'visitor',
-                isAdmin: direction === 'outgoing',
-                isAnonymous: direction !== 'outgoing',
-                sender_name: m.sender?.name || (direction === 'outgoing' ? 'Agent' : 'You'),
-                sender_avatar: m.sender?.thumbnail || m.sender?.avatar_url,
-            };
-        }).sort((a, b) => {
-            const at = new Date(a.created_at || 0).getTime();
-            const bt = new Date(b.created_at || 0).getTime();
-            if (at && bt && at !== bt) return at - bt;
-            return (a.id ?? 0) - (b.id ?? 0);
-        });
-
-        const sliced = decorated.length > limit ? decorated.slice(decorated.length - limit) : decorated;
-        return { messages: sliced, meta };
+        // Reuse existing decoration logic to keep parity with public chat
+        const decorated = this.decorateMessages(conversationId, items, limit);
+        return { messages: decorated.slice(-limit), meta };
     }
 
 }

@@ -245,7 +245,8 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
 
     // Public Chat endpoints (internal API backed) replacing failing public API usage
     // Use primary token for public chat to attribute messages correctly as visitor
-    const chatwootService = new ChatwootService(ChatwootApiPlugin.options);
+    const publicChatOptions = { ...ChatwootApiPlugin.options, apiToken: ChatwootApiPlugin.options.agentApiToken || ChatwootApiPlugin.options.apiToken };
+    const chatwootService = new ChatwootService(publicChatOptions);
     config.apiOptions.middleware.push({
         route: '/chat/api',
         handler: async (req: any, res: any, next: any) => {
@@ -333,7 +334,8 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                     if (Number.isNaN(cid)) return res.status(400).json({ error: 'invalid_conversation' });
                     try {
                         // Use a fresh service with the primary (account) token to attempt incoming visitor message
-                        const visitorService = new ChatwootService(ChatwootApiPlugin.options);
+                        const publicChatOptions = { ...ChatwootApiPlugin.options, apiToken: ChatwootApiPlugin.options.agentApiToken || ChatwootApiPlugin.options.apiToken };
+                        const visitorService = new ChatwootService(publicChatOptions);
                         const msg = await visitorService.sendPublicMessage(cid, content);
                         return res.json({ id: msg.id, content: msg.content, message_type: msg.message_type, side: 'visitor', sender_name: 'You' });
                     } catch (e: any) {
@@ -392,7 +394,7 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                 if (req.path !== '/admin/chatwoot') return next();
                 const html = `<!doctype html><html><head><meta charset=utf-8><title>Agent Chatwoot Console</title><meta name=viewport content=\"width=device-width,initial-scale=1\" />
 <style>body{margin:0;font-family:system-ui,Arial,sans-serif;background:#0b0e11;color:#dde4ee;display:flex;flex-direction:column;height:100vh;}header{padding:10px 16px;background:#141a22;border-bottom:1px solid #1f2730;font-size:14px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:12px;}header button.resolve{background:#334155;color:#fff;border:1px solid #475569;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;}header button.resolve:disabled{opacity:.4;cursor:not-allowed;}main{flex:1;display:flex;min-height:0;}aside{width:270px;border-right:1px solid #1f2730;display:flex;flex-direction:column;}aside h2{margin:0;padding:10px 14px;font-size:12px;letter-spacing:1px;opacity:.6;}#convs{flex:1;overflow:auto;}#convs button{all:unset;display:block;width:100%;padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #1a222c;text-align:left;}#convs button.active{background:#1d2732;}#convs button .metaLine{display:block;font-size:11px;opacity:.55;margin-top:2px;}#messages{flex:1;display:flex;flex-direction:column;overflow:auto;padding:14px;gap:10px;} .bubble{max-width:60%;padding:10px 12px;border-radius:12px;line-height:1.4;font-size:13px;background:#1d2732;box-shadow:0 1px 2px #0006;} .out{align-self:flex-end;background:#2563eb;color:#fff;} footer{border-top:1px solid #1f2730;padding:10px;background:#141a22;display:flex;gap:8px;}footer input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2c3947;background:#1a222c;color:#fff;}footer button{background:#2563eb;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}footer button:disabled{opacity:.4;cursor:not-allowed;} .meta{font-size:11px;opacity:.55;text-align:center;padding:4px 0;} .idtag{opacity:.5;font-size:10px;margin-top:2px;} .err{color:#f87171;font-size:12px;padding:4px 8px;background:#2d1a1a;border:1px solid #f87171;margin:6px 10px;border-radius:6px;}
-</style></head><body><header>Agent Chatwoot Console <button class=resolve id=resolveBtn disabled>Resolve</button></header><main><aside><h2>CONVERSATIONS</h2><div id=\"convErr\" class=\"err\" style=\"display:none\"></div><div id=\"convs\"></div></aside><section style=\"flex:1;display:flex;flex-direction:column;min-width:0;\"><div id=\"messages\"></div><div class=\"meta\" id=\"status\">Idle</div><footer><input id=\"msgInput\" placeholder=\"Type reply...\" autocomplete=\"off\"/><button id=\"sendBtn\" disabled>Send</button></footer></section></main><script>
+</style></head><body><header>Agent Chatwoot Console <button class=resolve id=resolveBtn disabled>Resolve</button></header><main><aside><h2>CONVERSATIONS</h2><div id="convErr" class="err" style="display:none"></div><div id="convs"></div></aside><section style="flex:1;display:flex;flex-direction:column;min-width:0;"><div id="messages"></div><div class="meta" id="status">Idle</div><footer><input id="msgInput" placeholder="Type reply..."" autocomplete="off"/><button id="sendBtn" disabled>Send</button></footer></section></main><script>
 const el=id=>document.getElementById(id);const convsEl=el('convs');const msgsEl=el('messages');const statusEl=el('status');const input=el('msgInput');const sendBtn=el('sendBtn');const resolveBtn=el('resolveBtn');const convErr=el('convErr');let current=null;async function fetchJson(u,opt){const r=await fetch(u,opt);const t=await r.text();if(!r.ok) throw new Error(t.slice(0,200));try{return JSON.parse(t);}catch{return t;} }
 async function loadConvs(){status('Loading conversations...');try{const list=await fetchJson('/admin/chatwoot/api/conversations');renderConvs(list);}catch(e){convErr.style.display='block';convErr.textContent='Conversations error: '+e.message;} }
 function renderConvs(list){convsEl.innerHTML='';list.forEach(c=>{const b=document.createElement('button');b.innerHTML='<strong>#'+c.id+'</strong>'+(c.last_message_content?' <span class=metaLine>'+escapeHtml(c.last_message_content.slice(0,60))+'</span>':'');if(c.id===current) b.classList.add('active');b.onclick=()=>{selectConv(c.id)};convsEl.appendChild(b);}); if(current && !list.find(c=>c.id===current)){current=null;msgsEl.innerHTML='';} resolveBtn.disabled=!current;}
@@ -426,7 +428,8 @@ input.addEventListener('input',updateButtons);sendBtn.onclick=()=>send();resolve
                     if (msgMatch) {
                         const cid = Number(msgMatch[1]);
                         if (req.method === 'GET') {
-                            const msgs = await service.listMessages(cid, 80);
+                            // In the admin message fetch, ensure we call listMessagesWithMeta so we get decorated messages
+                            const msgs = await service.listMessagesWithMeta(cid, 80);
                             return res.json(msgs);
                         }
                         if (req.method === 'POST') {

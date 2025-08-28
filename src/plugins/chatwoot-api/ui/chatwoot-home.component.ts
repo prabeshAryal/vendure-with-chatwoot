@@ -250,13 +250,20 @@ const M_RESOLVE = gql`
             </button>
           </div>
           <div class="messages-container" #messagesContainer>
-            <div *ngFor="let m of messages()" class="message-bubble-row" [class.outgoing]="m.isAdmin" [class.incoming]="!m.isAdmin">
+            <div *ngFor="let m of messages()" class="message-bubble-row" [class.outgoing]="!m.isSystem && m.isAdmin" [class.incoming]="!m.isAdmin && !m.isSystem">
               <div>
-                <div class="message-bubble" [class.outgoing]="m.isAdmin" [class.incoming]="!m.isAdmin">
-                  {{ m.content }}
+                <div class="message-bubble" 
+                     [class.outgoing]="!m.isSystem && m.isAdmin" 
+                     [class.incoming]="!m.isSystem && !m.isAdmin" 
+                     [style.background]="m.isSystem ? '#ececec' : null" 
+                     [style.color]="m.isSystem ? '#444' : null">
+                  <ng-container *ngIf="!m.isSystem; else systemTpl">{{ m.content }}</ng-container>
+                  <ng-template #systemTpl>
+                    <em>{{ m.content }}</em>
+                  </ng-template>
                 </div>
                 <div class="message-info">
-                  <strong>{{ m.sender_name || (m.isAdmin ? 'Agent' : 'Visitor') }}</strong>
+                  <strong>{{ m.isSystem ? 'System' : (m.sender_name || (m.isAdmin ? 'Agent' : 'Visitor')) }}</strong>
                   <span *ngIf="m.created_at"> &middot; {{ m.created_at | date:'shortTime' }}</span>
                 </div>
               </div>
@@ -313,8 +320,11 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
 
   resolve(conversationId: number | null) {
     if (!conversationId) return;
-    this.apollo.mutate({ mutation: M_RESOLVE, variables: { id: conversationId } })
-      .subscribe(() => this.reload());
+    this.apollo.mutate({ mutation: M_RESOLVE, variables: { id: conversationId }, fetchPolicy: 'no-cache' })
+      .subscribe({
+        next: () => this.reload(),
+        error: () => this.reload(),
+      });
   }
 
   select(c: any) {
