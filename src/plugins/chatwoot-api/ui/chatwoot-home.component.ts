@@ -1,4 +1,4 @@
-import { Component, signal, OnDestroy, AfterViewChecked, ElementRef, ViewChild, computed } from '@angular/core';
+import { Component, signal, OnDestroy, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo } from 'apollo-angular';
@@ -229,6 +229,10 @@ const M_TOGGLE_STATUS = gql`
         border-color: #1976d2;
         box-shadow: 0 0 0 2px #1976d230;
       }
+      .reopen-btn {
+        margin-top: 8px;
+        padding: 4px 8px;
+      }
     </style>
     <div class="container">
       <div class="sidebar">
@@ -240,12 +244,15 @@ const M_TOGGLE_STATUS = gql`
           <li *ngFor="let c of conversations()" (click)="select(c)" class="conversation-item" [class.selected]="c.id === selectedId()">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="id">#{{c.id}}</span>
-              <span class="status-badge" [ngClass]="'status-' + c.status">
+              <span class="status-badge" [ngClass]="'status-' + c.status.trim()">
                 {{ c.status }}
               </span>
             </div>
             <div class="preview" title="{{c.last_message_content}}">{{c.last_message_content || 'No messages yet.'}}</div>
             <div class="date" *ngIf="c.updated_at">{{c.updated_at | date:'short'}}</div>
+            <button *ngIf="c.status.trim() === 'resolved'" class="btn btn-danger reopen-btn" (click)="toggleStatus(c.id); $event.stopPropagation()">
+              Reopen
+            </button>
           </li>
         </ul>
       </div>
@@ -253,11 +260,6 @@ const M_TOGGLE_STATUS = gql`
         <ng-container *ngIf="selectedId(); else noSelection">
           <div class="chat-header">
             <h3 style="margin:0;">Conversation #{{selectedId()}}</h3>
-            <button class="btn" 
-                    [ngClass]="isCurrentConversationResolved() ? 'btn-danger' : 'btn-success'"
-                    (click)="toggleStatus(selectedId())">
-              {{ isCurrentConversationResolved() ? 'Reopen' : 'Mark as Resolved' }}
-            </button>
           </div>
           <div class="messages-container" #messagesContainer>
             <div *ngFor="let m of messages()" class="message-bubble-row" [class.outgoing]="!m.isSystem && m.isAdmin" [class.incoming]="!m.isAdmin && !m.isSystem">
@@ -304,17 +306,6 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
   private shouldScrollToBottom = false;
 
   @ViewChild('messagesContainer') private messagesContainer: ElementRef | undefined;
-
-  selectedConversation = computed(() => {
-    const selectedId = this.selectedId();
-    if (!selectedId) return null;
-    return this.conversations().find(c => c.id === selectedId);
-  });
-
-  isCurrentConversationResolved = computed(() => {
-    const selected = this.selectedConversation();
-    return selected ? selected.status.trim() === 'resolved' : false;
-  });
 
   constructor(private apollo: Apollo) {
     this.reload();
