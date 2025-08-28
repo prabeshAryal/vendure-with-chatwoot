@@ -1,3 +1,11 @@
+// Shim to neutralize deprecated util._extend usage in transitive dependency (http-proxy)
+// Safe because util._extend performed a shallow copy just like Object.assign.
+try {
+    const u: any = require('util');
+    if (u && u._extend) {
+        u._extend = Object.assign;
+    }
+} catch {}
 import { bootstrap, runMigrations, VendureBootstrapFunction, Logger } from '@vendure/core';
 import { config } from './vendure-config';
 
