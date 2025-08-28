@@ -1,13 +1,43 @@
-# vendor-chatwoot
+# Vendure Chatwoot Integration Demo
 
-This project was generated with [`@vendure/create`](https://github.com/vendure-ecommerce/vendure/tree/master/packages/create).
+This project is a demonstration of integrating [Chatwoot](https://www.chatwoot.com/) into a [Vendure](https://www.vendure.io/) e-commerce application.
 
-Useful links:
+It provides:
 
-- [Vendure docs](https://www.vendure.io/docs)
-- [Vendure Discord community](https://www.vendure.io/community)
-- [Vendure on GitHub](https://github.com/vendure-ecommerce/vendure)
-- [Vendure plugin template](https://github.com/vendure-ecommerce/plugin-template)
+*   A public chat widget available at `/chat`.
+*   An agent-facing chat interface within the Vendure admin UI.
+*   GraphQL APIs for interacting with Chatwoot from the storefront and admin UI.
+
+## How it works
+
+The integration is built using two Vendure plugins:
+
+*   `ChatwootApiPlugin`: Handles the core logic of communicating with the Chatwoot API. It provides services and GraphQL resolvers for interacting with Chatwoot conversations and messages.
+*   `ChatFeaturePlugin`: Provides the front-end components for the chat. It serves a standalone chat client for customers at the `/chat` url, and also an agent-facing view inside the Vendure admin UI.
+
+## Configuration
+
+The application is configured via environment variables. You should create a `.env` file in the root of the project with the following variables:
+
+```
+# Vendure
+APP_ENV=dev
+PORT=3000
+SUPERADMIN_USERNAME=superadmin
+SUPERADMIN_PASSWORD=superadmin
+COOKIE_SECRET=some-secret
+
+# Chatwoot
+CHATWOOT_BASE_URL=https://app.chatwoot.com
+CHATWOOT_API_TOKEN=your_chatwoot_api_token
+CHATWOOT_AGENT_API_TOKEN=your_chatwoot_agent_api_token
+CHATWOOT_ACCOUNT_ID=your_chatwoot_account_id
+CHATWOOT_INBOX_ID=your_chatwoot_inbox_id
+CHATWOOT_WEBSITE_TOKEN=your_chatwoot_website_token
+CHATWOOT_HMAC_TOKEN=your_chatwoot_hmac_token
+CHATWOOT_ENFORCE_USER_IDENTITY=false
+CHATWOOT_AGENT_ACCOUNT_ID=your_chatwoot_agent_account_id
+```
 
 ## Directory structure
 
@@ -139,9 +169,8 @@ You can also run any pending migrations manually, without starting the server vi
 
 ## Troubleshooting
 
-### Error: Could not load the "sharp" module using the \[OS\]-x\[Architecture\] runtime when running Vendure server.
+### Error: Could not load the "sharp" module using the [OS]-x[Architecture] runtime when running Vendure server.
 
 - Make sure your Node version is ^18.17.0 || ^20.3.0 || >=21.0.0 to support the Sharp library.
 - Make sure your package manager is up to date.
 - **Not recommended**: if none of the above helps to resolve the issue, install sharp specifying your machines OS and Architecture. For example: `pnpm install sharp --config.platform=linux --config.architecture=x64` or `npm install sharp --os linux --cpu x64`
-
