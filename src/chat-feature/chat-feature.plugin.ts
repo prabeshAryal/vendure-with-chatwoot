@@ -80,10 +80,11 @@ async function loadMessages(){
     try {
         const list = await api('/chat/api/messages?contact='+encodeURIComponent(contactSource)+'&conversation='+conversationId);
         list.sort((a,b)=>(a.created_at||0)-(b.created_at||0));
-        
-        // FIX: This is the primary bug fix. Instead of clearing the entire chat on every poll (which causes flickering),
-        // we now check if a message has already been rendered and only append new ones.
-        // This makes the UI performant and allows users to scroll up without interruption.
+        // If message count changes (e.g. after refresh), clear and re-render all
+        if (list.length !== lastMessageIds.size) {
+            chat.innerHTML = '';
+            lastMessageIds.clear();
+        }
         for(const m of list){
             if (!lastMessageIds.has(m.id)) {
                 const role = m.side === 'visitor' ? 'user' : 'agent';
@@ -91,6 +92,8 @@ async function loadMessages(){
                 lastMessageIds.add(m.id);
             }
         }
+        // Always auto-scroll to the latest message after loading
+        setTimeout(()=>{ chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' }); }, 100);
     } catch(e){ console.warn('msg load', e.message); }
 }
 async function sendMessage(text){
@@ -98,12 +101,10 @@ async function sendMessage(text){
     if(!contactSource || !conversationId){
         try { await start(); } catch(e){ append('agent','(Session error) '+e.message); return; }
     }
-    const temp = { content: text };
-    append('user', text, { replace: null });
     input.value=''; sendBtn.disabled=true;
     try {
         await api('/chat/api/messages',{ method:'POST', body: JSON.stringify({ contact: contactSource, conversation: conversationId, content: text })});
-        // Refresh after send to show server-authoritative ordering
+        // Only append after server confirms and loadMessages fetches authoritative list
         await loadMessages();
     } catch(e){ append('agent','(Failed to send) '+e.message); }
 }
