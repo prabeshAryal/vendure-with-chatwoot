@@ -52,11 +52,12 @@ header .info .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-
 .msg.user .meta{text-align:right;}
 footer{background:var(--bg-secondary);border-top:1px solid var(--border-color);padding:16px 20px;}
 form{display:flex;gap:12px;align-items:flex-end;}
-textarea{flex:1;background:var(--bg-main);color:var(--text-primary);border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;resize:none;min-height:48px;max-height:200px;font-size:14px;line-height:1.5;outline:none;box-shadow:0 0 0 2px transparent;transition:all .2s ease;}
-textarea:focus{border-color:var(--brand-color);box-shadow:0 0 0 3px #3b82f633;}
-button{background:var(--brand-color);color:#fff;border:none;font-weight:600;width:48px;height:48px;border-radius:12px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;box-shadow:0 4px 12px -2px #3b82f655;}
-button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;}
-button:not(:disabled):hover{background:#2563eb;}
+textarea{flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:18px;padding:12px 20px;resize:none;min-height:48px;max-height:200px;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;outline:none;box-shadow:0 0 0 2px transparent, 0 1px 2px rgba(0,0,0,0.05);transition:all .2s ease-in-out;}
+textarea:focus{border-color:var(--brand-color);box-shadow:0 0 0 4px #3b82f633, 0 1px 2px rgba(0,0,0,0.05);}
+button{background:var(--brand-color);color:#fff;border:none;font-weight:600;width:52px;height:52px;border-radius:50%;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease-in-out;box-shadow:0 4px 14px -2px #3b82f666;transform:scale(1);}
+button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:scale(0.95);}
+button:not(:disabled):hover{background:#2563eb;transform:scale(1.05);}
+button:not(:disabled):active{transform:scale(0.98);}
 .typing-indicator{display:flex;gap:4px;align-items:center;padding:12px 16px;}
 .typing-indicator span{width:8px;height:8px;background-color:var(--text-secondary);border-radius:50%;animation:pulse 1.4s infinite ease-in-out both;}
 .typing-indicator span:nth-child(1){animation-delay:-.32s;}
@@ -204,6 +205,12 @@ function autoResize() {
 input.addEventListener('input',()=>{ 
     sendBtn.disabled = !input.value.trim(); 
     autoResize(); 
+});
+input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    }
 });
 document.getElementById('chatForm').addEventListener('submit', async e=>{ 
     e.preventDefault(); 

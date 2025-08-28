@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev:server": "ts-node ./src/index.ts",
-    "dev:worker": "ts-node ./src/index-worker.ts",
+        "dev:server": "node --trace-deprecation ./node_modules/ts-node/dist/bin.js ./src/index.ts",
+        "dev:worker": "node --trace-deprecation ./node_modules/ts-node/dist/bin.js ./src/index-worker.ts",
     "dev": "concurrently npm:dev:*",
     "build": "tsc",
     "start:server": "node ./dist/index.js",
@@ -13,11 +13,11 @@
     "codegen": "graphql-codegen --config codegen.yml"
   },
   "dependencies": {
-    "@vendure/admin-ui-plugin": "3.4.1",
-    "@vendure/asset-server-plugin": "3.4.1",
-    "@vendure/core": "3.4.1",
-    "@vendure/email-plugin": "3.4.1",
-    "@vendure/graphiql-plugin": "3.4.1",
+    "@vendure/admin-ui-plugin": "3.4.2-master-202508280230",
+    "@vendure/asset-server-plugin": "3.4.2-master-202508280230",
+    "@vendure/core": "3.4.2-master-202508280230",
+    "@vendure/email-plugin": "3.4.2-master-202508280230",
+    "@vendure/graphiql-plugin": "3.4.2-master-202508280230",
     "better-sqlite3": "12.2.0",
     "dotenv": "17.2.1",
     "graphql-tag": "2.12.6",
@@ -28,9 +28,12 @@
     "@graphql-codegen/typescript": "^4.1.6",
     "@graphql-codegen/typescript-resolvers": "^4.5.1",
     "@types/react": "19.1.11",
-    "@vendure/cli": "3.4.1",
-    "@vendure/ui-devkit": "3.4.1",
+    "@vendure/cli": "3.4.2-master-202508280230",
+    "@vendure/ui-devkit": "3.4.2-master-202508280230",
     "concurrently": "9.2.1",
     "typescript": "5.8.2"
+  },
+  "overrides": {
+    "http-proxy-middleware": "^3.0.0"
   }
 }
