@@ -25,6 +25,10 @@ export const config: VendureConfig = {
         port: serverPort,
         adminApiPath: 'admin-api',
         shopApiPath: 'shop-api',
+        cors: {
+            origin: ['https://vendure.prabe.sh'],
+            credentials: true,
+        },
         trustProxy: IS_DEV ? false : 1,
         // The following options are useful in development mode,
         // but are best turned off for production for security
@@ -67,7 +71,7 @@ export const config: VendureConfig = {
             // For local dev, the correct value for assetUrlPrefix should
             // be guessed correctly, but for production it will usually need
             // to be set manually to match your production url.
-            assetUrlPrefix: IS_DEV ? undefined : 'https://www.my-shop.com/assets/',
+            assetUrlPrefix: IS_DEV ? undefined : 'https://vendure.prabe.sh/assets/',
         }),
         DefaultSchedulerPlugin.init(),
         DefaultJobQueuePlugin.init({ useDatabaseForBuffer: true }),
@@ -81,10 +85,10 @@ export const config: VendureConfig = {
             globalTemplateVars: {
                 // The following variables will change depending on your storefront implementation.
                 // Here we are assuming a storefront running at http://localhost:8080.
-                fromAddress: '"example" <noreply@example.com>',
-                verifyEmailAddressUrl: 'http://localhost:8080/verify',
-                passwordResetUrl: 'http://localhost:8080/password-reset',
-                changeEmailAddressUrl: 'http://localhost:8080/verify-email-address-change'
+                fromAddress: '"example" <noreply@vendure.prabe.sh>',
+                verifyEmailAddressUrl: 'https://vendure.prabe.sh/verify',
+                passwordResetUrl: 'https://vendure.prabe.sh/password-reset',
+                changeEmailAddressUrl: 'https://vendure.prabe.sh/verify-email-address-change'
             },
         }),
         AdminUiPlugin.init({

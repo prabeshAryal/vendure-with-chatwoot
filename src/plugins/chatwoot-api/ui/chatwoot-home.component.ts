@@ -142,6 +142,7 @@ const M_TOGGLE_STATUS = gql`
         border-radius: 12px;
         font-weight: 500;
         text-transform: capitalize;
+        cursor: pointer;
       }
       .status-resolved {
         background: #c8e6c9;
@@ -244,15 +245,12 @@ const M_TOGGLE_STATUS = gql`
           <li *ngFor="let c of conversations()" (click)="select(c)" class="conversation-item" [class.selected]="c.id === selectedId()">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="id">#{{c.id}}</span>
-              <span class="status-badge" [ngClass]="'status-' + c.status.trim()">
+              <span class="status-badge" [ngClass]="'status-' + c.status.trim()" (click)="toggleStatus(c.id); $event.stopPropagation()">
                 {{ c.status }}
               </span>
             </div>
             <div class="preview" title="{{c.last_message_content}}">{{c.last_message_content || 'No messages yet.'}}</div>
             <div class="date" *ngIf="c.updated_at">{{c.updated_at | date:'short'}}</div>
-            <button *ngIf="c.status.trim() === 'resolved'" class="btn btn-danger reopen-btn" (click)="toggleStatus(c.id); $event.stopPropagation()">
-              Reopen
-            </button>
           </li>
         </ul>
       </div>
