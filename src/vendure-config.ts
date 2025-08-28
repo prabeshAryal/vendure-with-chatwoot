@@ -103,13 +103,13 @@ export const config: VendureConfig = {
                     ChatwootApiPlugin.ui,
                 ],
                 devMode: true,
-            }),
-            vite: {
-                server: {
-                    host: 'vendure.prabe.sh',
-                    allowedHosts: ['vendure.prabe.sh'],
+                vite: {
+                    server: {
+                        host: 'vendure.prabe.sh',
+                        allowedHosts: ['vendure.prabe.sh'],
+                    },
                 },
-            },
+            }),
         }),
         ChatwootApiPlugin.init({
             baseUrl: process.env.CHATWOOT_BASE_URL,

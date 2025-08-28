@@ -1,103 +1,22 @@
-<ul _ngcontent-ng-c4066076210="" class="conversation-list"><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#35</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:21 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:36:37.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#34</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:17 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:32:32.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#33</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:14 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:29:17.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#32</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:13 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:28:53.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#31</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:10 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:25:14.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#30</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:07 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:22:49.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#29</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 6:02 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:17:15.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#28</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:51 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:06:25.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#27</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:47 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T12:02:07.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#26</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:33 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:48:24.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#25</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:31 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:46:51.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#24</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:31 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:46:12.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#23</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:31 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:46:05.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#22</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:23 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:38:26.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#21</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:23 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:38:09.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#20</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:23 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:38:07.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#19</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:17 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:32:22.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#18</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:17 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:32:19.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#16</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 5:08 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T11:23:28.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#14</span><span _ngcontent-ng-c4066076210="" class="status-badge status-resolved" ng-reflect-ng-class="status-resolved"> resolved </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 4:27 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T10:42:58.000Z"
-}--><button _ngcontent-ng-c4066076210="" class="btn btn-danger reopen-btn"> Reopen </button><!--bindings={
-  "ng-reflect-ng-if": "true"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#12</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 4:16 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T10:31:24.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#9</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 4:15 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T10:30:56.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#11</span><span _ngcontent-ng-c4066076210="" class="status-badge status-resolved" ng-reflect-ng-class="status-resolved"> resolved </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 3:58 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T10:13:04.000Z"
-}--><button _ngcontent-ng-c4066076210="" class="btn btn-danger reopen-btn"> Reopen </button><!--bindings={
-  "ng-reflect-ng-if": "true"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#10</span><span _ngcontent-ng-c4066076210="" class="status-badge status-resolved" ng-reflect-ng-class="status-resolved"> resolved </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 3:57 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T10:12:56.000Z"
-}--><button _ngcontent-ng-c4066076210="" class="btn btn-danger reopen-btn"> Reopen </button><!--bindings={
-  "ng-reflect-ng-if": "true"
-}--></li><li _ngcontent-ng-c4066076210="" class="conversation-item"><div _ngcontent-ng-c4066076210="" style="display: flex; justify-content: space-between; align-items: center;"><span _ngcontent-ng-c4066076210="" class="id">#13</span><span _ngcontent-ng-c4066076210="" class="status-badge status-open" ng-reflect-ng-class="status-open"> open </span></div><div _ngcontent-ng-c4066076210="" class="preview" title="">No messages yet.</div><div _ngcontent-ng-c4066076210="" class="date">8/28/25, 3:08 PM</div><!--bindings={
-  "ng-reflect-ng-if": "2025-08-28T09:23:12.000Z"
-}--><!--bindings={
-  "ng-reflect-ng-if": "false"
-}--></li><!--bindings={
-  "ng-reflect-ng-for-of": "[object Object],[object Object"
-}--></ul>
+/4), 420 bytes | 210.00 KiB/s, done.
+From https://github.com/prabeshAryal/vendure-with-chatwoot
+   45987d7..5e13cbe  master     -> origin/master
+Updating 45987d7..5e13cbe
+Fast-forward
+ src/vendure-config.ts | 6 ++++++
+ 1 file changed, 6 insertions(+)
+root@ubuntu-s-2vcpu-4gb-amd-nyc3-01:~/vendure-with-chatwoot# npm run build
+
+> vendor-chatwoot@0.1.0 build
+> tsc
+
+src/vendure-config.ts:107:13 - error TS2353: Object literal may only specify known properties, and 'vite' does not exist in type 'AdminUiPluginOptions'.
+
+107             vite: {
+                ~~~~
+
+
+Found 1 error in src/vendure-config.ts:107
+
+root@ubuntu-s-2vcpu-4gb-amd-nyc3-01:~/vendure-with-chatwoot# 
+[0] 0:bash*                                           
