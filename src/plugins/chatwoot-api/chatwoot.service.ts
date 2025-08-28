@@ -325,20 +325,33 @@ export class ChatwootService {
 
     private decorateMessages(conversationId: number, items: any[], limit: number) {
         const decorated = items.map(m => {
-            const direction = m.message_type === 0 ? 'incoming' : 'outgoing';
+            const original_message_type = m.message_type;
+            let direction: 'incoming' | 'outgoing' | 'note';
+            if (original_message_type === 1) {
+                direction = 'outgoing';
+            } else if (original_message_type === 0) {
+                direction = 'incoming';
+            } else {
+                direction = 'note';
+            }
+
+            if (direction === 'outgoing' && m?.content_attributes?.public_user) {
+                direction = 'incoming';
+            }
+
             const side = direction === 'incoming' ? 'visitor' : 'agent';
-            const sender_name = m.sender?.name || (side === 'agent' ? 'Agent' : 'You');
+            const isSystem = direction === 'note';
+            const sender_name = m.sender?.name || (isSystem ? 'System' : side === 'agent' ? 'Agent' : 'You');
+
             return {
-                id: m.id,
-                content: m.content,
-                created_at: m.created_at,
-                message_type: direction, // use the string 'incoming' or 'outgoing'
-                direction: direction,
-                side: side,
-                sender_name: sender_name,
-                // for debugging
-                original_message_type: m.message_type,
-                sender_type: m.sender?.type,
+                ...m,
+                message_type: direction,
+                direction,
+                side,
+                sender_name,
+                isAdmin: direction === 'outgoing' || isSystem,
+                isAnonymous: direction === 'incoming',
+                isSystem,
             };
         }).sort((a, b) => a.id - b.id);
         return decorated;
