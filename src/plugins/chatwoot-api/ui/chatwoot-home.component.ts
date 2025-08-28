@@ -1,4 +1,4 @@
-import { Component, signal, OnDestroy, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
+import { Component, signal, OnDestroy, AfterViewChecked, ElementRef, ViewChild, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo } from 'apollo-angular';
@@ -305,6 +305,17 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
 
   @ViewChild('messagesContainer') private messagesContainer: ElementRef | undefined;
 
+  selectedConversation = computed(() => {
+    const selectedId = this.selectedId();
+    if (!selectedId) return null;
+    return this.conversations().find(c => c.id === selectedId);
+  });
+
+  isCurrentConversationResolved = computed(() => {
+    const selected = this.selectedConversation();
+    return selected ? selected.status.trim() === 'resolved' : false;
+  });
+
   constructor(private apollo: Apollo) {
     this.reload();
   }
@@ -377,11 +388,6 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
           this.messages.set(this.messages().filter(m => m.id !== optimistic.id));
         }
       });
-  }
-
-  isCurrentConversationResolved(): boolean {
-      const selected = this.conversations().find(c => c.id === this.selectedId());
-      return selected ? selected.status === 'resolved' : false;
   }
 
   private startPolling() {

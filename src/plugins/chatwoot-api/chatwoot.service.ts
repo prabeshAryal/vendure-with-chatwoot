@@ -239,8 +239,7 @@ export class ChatwootService {
                 contact_id: c.contact_id || c.contact?.id,
                 last_message_content: lastMessageContent,
                 updated_at,
-                status: c.status || c.resolved ? (c.resolved ? 'resolved' : 'open') : (c.status || 'open'),
-                resolved: !!c.resolved,
+                status: c.status,
                 meta: c.meta || {},
             };
         });
