@@ -1,5 +1,12 @@
 {
-  "conversations": [],
+  "conversations": [
+    {
+      "id": 12,
+      "inbox_id": 75582,
+      "contact_id": 463709442,
+      "source_id": "sess-mev11lzf-mwtr77"
+    }
+  ],
   "messages": {
     "2": [
       {
@@ -981,6 +988,122 @@
           "availability_status": "offline",
           "thumbnail": ""
         }
+      },
+      {
+        "id": 254691133,
+        "content": "hello",
+        "inbox_id": 75582,
+        "conversation_id": 12,
+        "message_type": 0,
+        "content_type": "text",
+        "status": "sent",
+        "content_attributes": {},
+        "created_at": 1756362794,
+        "private": false,
+        "source_id": null,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {
+            "source": "website_chat",
+            "first_seen": "2025-08-28T06:33:03.988Z",
+            "session_id": "mwtr77"
+          },
+          "email": null,
+          "id": 463709442,
+          "identifier": null,
+          "name": "Visitor ",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 254719330,
+        "content": "You",
+        "inbox_id": 75582,
+        "conversation_id": 12,
+        "message_type": 0,
+        "content_type": "text",
+        "status": "sent",
+        "content_attributes": {},
+        "created_at": 1756365025,
+        "private": false,
+        "source_id": null,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {
+            "source": "website_chat",
+            "first_seen": "2025-08-28T06:33:03.988Z",
+            "session_id": "mwtr77"
+          },
+          "email": null,
+          "id": 463709442,
+          "identifier": null,
+          "name": "Visitor ",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 254751763,
+        "content": "Hi",
+        "inbox_id": 75582,
+        "conversation_id": 12,
+        "message_type": 0,
+        "content_type": "text",
+        "status": "sent",
+        "content_attributes": {},
+        "created_at": 1756368026,
+        "private": false,
+        "source_id": null,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {
+            "source": "website_chat",
+            "first_seen": "2025-08-28T06:33:03.988Z",
+            "session_id": "mwtr77"
+          },
+          "email": null,
+          "id": 463709442,
+          "identifier": null,
+          "name": "Visitor ",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 254752053,
+        "content": "Ahaha Great",
+        "inbox_id": 75582,
+        "conversation_id": 12,
+        "message_type": 0,
+        "content_type": "text",
+        "status": "sent",
+        "content_attributes": {},
+        "created_at": 1756368052,
+        "private": false,
+        "source_id": null,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {
+            "source": "website_chat",
+            "first_seen": "2025-08-28T06:33:03.988Z",
+            "session_id": "mwtr77"
+          },
+          "email": null,
+          "id": 463709442,
+          "identifier": null,
+          "name": "Visitor ",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
       }
     ],
     "13": [
@@ -1317,6 +1440,24 @@
         "first_seen": "2025-08-28T05:58:14.170Z"
       },
       "created_at": 1756360696,
+      "contact_inboxes": []
+    },
+    "mwtr77": {
+      "additional_attributes": {},
+      "availability_status": "offline",
+      "email": null,
+      "id": 463709442,
+      "name": "Visitor ",
+      "phone_number": null,
+      "blocked": false,
+      "identifier": null,
+      "thumbnail": "",
+      "custom_attributes": {
+        "session_id": "mwtr77",
+        "source": "website_chat",
+        "first_seen": "2025-08-28T06:33:03.988Z"
+      },
+      "created_at": 1756362786,
       "contact_inboxes": []
     }
   }

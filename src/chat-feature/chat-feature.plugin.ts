@@ -203,18 +203,22 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                     const cid = Number(conversation);
                     if (Number.isNaN(cid)) return res.status(400).json({ error: 'invalid_conversation' });
                     try {
-                        const msgs = await chatwootService.listMessagesFresh(cid, 120);
-                        const mapped = msgs.map(m => {
-                            const orig: any = (m as any).original_message_type ?? (m as any).message_type;
-                            let side: 'visitor' | 'agent';
-                            if (orig === 0 || orig === 'incoming') side = 'visitor';
-                            else if (orig === 1 || orig === 'outgoing') side = 'agent';
-                            else if (orig === 2 || orig === 'note') side = 'agent'; // system/activity -> agent side
-                            else side = 'agent';
-                            const sender_name = side === 'visitor' ? 'You' : 'Agent';
-                            const direction = side === 'visitor' ? 'incoming' : 'outgoing';
-                            return { id: (m as any).id, content: (m as any).content, message_type: orig, created_at: (m as any).created_at, direction, sender_name, side };
-                        }).sort((a,b)=> (a.created_at||0)-(b.created_at||0));
+                        // Only use live API messages, no cache
+                        const msgs: any[] = await chatwootService.listMessagesFresh(cid, 120);
+                        Logger.info('[ChatFeaturePlugin] Raw service output from listMessagesFresh (API only): ' + JSON.stringify(msgs));
+                        const mapped = msgs.map((m: any) => ({
+                            id: m.id,
+                            content: m.content,
+                            message_type: m.message_type,
+                            created_at: m.created_at,
+                            created_at_ms: m.created_at_ms,
+                            direction: m.direction,
+                            side: m.side,
+                            sender_name: m.side === 'visitor' ? 'You' : 'Agent'
+                        }));
+                        Logger.info('[ChatFeaturePlugin] Mapped array for /chat/api/messages (API only): ' + JSON.stringify(mapped));
+                        mapped.sort((a: any, b: any) => (a.created_at_ms || a.created_at || 0) - (b.created_at_ms || b.created_at || 0));
+                        Logger.info('[ChatFeaturePlugin] Final sorted response for /chat/api/messages (API only): ' + JSON.stringify(mapped));
                         return res.json(mapped);
                     } catch (e: any) {
                         Logger.error(`${logPrefix} listMessages failed ${e.message}`);

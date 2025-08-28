@@ -284,119 +284,67 @@ export class ChatwootService {
     }
 
     async listMessages(conversationId: number, limit = 20) {
-        await this.ensureCacheLoaded();
-        const now = Date.now();
-        const last = ChatwootService.lastFetch.get(conversationId) || 0;
-        const existingMapPre = ChatwootService.memoryMessages.get(conversationId);
-        // Throttle remote call if fetched very recently (<1.5s) and we have cache
-        if (existingMapPre && existingMapPre.size && now - last < 1500) {
-            const cachedItems = Array.from(existingMapPre.values());
-            return this.decorateMessages(conversationId, cachedItems, limit);
-        }
-        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
-        this.log('Listing Chatwoot messages', { conversationId, limit, throttled: now - last < 1500 ? 'skip-remote' : 'remote' });
+    const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?page=1&per_page=${limit}`;
+        this.log('Listing Chatwoot messages', { conversationId, limit });
         const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
             const text = await res.text();
             if (res.status === 404) {
-                // Conversation no longer exists remotely - purge local cache once
-                const existing = ChatwootService.memoryMessages.get(conversationId);
-                if (existing && existing.size) {
-                    ChatwootService.memoryMessages.delete(conversationId);
-                    ChatwootService.memoryConversations = ChatwootService.memoryConversations.filter(c => c.id !== conversationId);
-                    this.persistCache();
-                    this.log('Purged stale conversation cache after 404', { conversationId });
-                }
-                // Return empty list gracefully
                 return [];
             }
             throw new Error(`Chatwoot listMessages failed: ${res.status} ${text}`);
         }
         const json: any = await res.json();
         let items: any[] = [];
-        if (Array.isArray(json)) items = json;
+        if (Array.isArray(json?.payload)) items = json.payload;
+        else if (Array.isArray(json)) items = json;
         else if (Array.isArray(json?.data)) items = json.data;
-        else if (Array.isArray(json?.payload)) items = json.payload; // Chatwoot payload form
-
-        const existingMap = ChatwootService.memoryMessages.get(conversationId) ?? new Map<number, any>();
-        if (!items.length) {
-            if (existingMap.size) {
-                // Controlled fallback logging
-                const count = (ChatwootService.fallbackLogCounts.get(conversationId) || 0) + 1;
-                ChatwootService.fallbackLogCounts.set(conversationId, count);
-                if (count === 1 || count % 10 === 0) {
-                    this.log('Using in-memory message cache fallback', { conversationId, count: existingMap.size, repeats: count });
-                }
-                items = Array.from(existingMap.values());
-            } else {
-                // First time empty remote: log diagnostic sample
-                this.log('Remote returned zero messages (no cache)', { conversationId, rawKeys: Object.keys(json || {}) });
-            }
-        } else {
-            // Reset fallback counter when we have remote data
-            if (ChatwootService.fallbackLogCounts.has(conversationId)) {
-                ChatwootService.fallbackLogCounts.delete(conversationId);
-            }
-            items.forEach(m => { if (m?.id) existingMap.set(m.id, m); });
-            ChatwootService.memoryMessages.set(conversationId, existingMap);
-            this.persistCache();
-            items = Array.from(existingMap.values());
-        }
-        ChatwootService.lastFetch.set(conversationId, Date.now());
         return this.decorateMessages(conversationId, items, limit);
     }
 
     // Always fetch remote (no throttle) for real-time public chat refreshes
     async listMessagesFresh(conversationId: number, limit = 20) {
-        await this.ensureCacheLoaded();
-        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
+    const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?page=1&per_page=${limit}`;
         const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
             const text = await res.text();
             if (res.status === 404) return [];
             throw new Error(`Chatwoot listMessagesFresh failed: ${res.status} ${text}`);
         }
+        const rawText = await res.clone().text();
+        this.log('Raw Chatwoot API response', { url, rawText });
         const json: any = await res.json();
+        this.log('Parsed Chatwoot API response', { url, keys: Object.keys(json), sample: Array.isArray(json?.payload) ? json.payload.slice(0,3) : json });
         let items: any[] = [];
-        if (Array.isArray(json)) items = json; else if (Array.isArray(json?.data)) items = json.data; else if (Array.isArray(json?.payload)) items = json.payload;
-        const existingMap = ChatwootService.memoryMessages.get(conversationId) ?? new Map<number, any>();
-        if (items.length) {
-            items.forEach(m => { if (m?.id) existingMap.set(m.id, m); });
-            ChatwootService.memoryMessages.set(conversationId, existingMap);
-            this.persistCache();
-            items = Array.from(existingMap.values());
-        } else {
-            items = Array.from(existingMap.values());
-        }
-        // Attempt to filter out pre-session history: find earliest visitor message (incoming) treated as session start
-        const decorated = this.decorateMessages(conversationId, items, limit * 2); // decorate with larger window
-        let sessionStart = 0;
-        for (const m of decorated) {
-            if (m.message_type === 'incoming') { sessionStart = m.created_at_ms || 0; break; }
-        }
-        const filtered = sessionStart ? decorated.filter(m => (m.created_at_ms || 0) >= sessionStart) : decorated;
-        // Slice again to final limit
-        return filtered.length > limit ? filtered.slice(filtered.length - limit) : filtered;
+        if (Array.isArray(json?.payload)) items = json.payload;
+        else if (Array.isArray(json)) items = json;
+        else if (Array.isArray(json?.data)) items = json.data;
+        this.log('Extracted items for decoration', { count: items.length, ids: items.map(m=>m.id) });
+        // Only use live API items, no cache fallback or merge
+        const decorated = this.decorateMessages(conversationId, items, limit * 2);
+        this.log('Decorated messages', { count: decorated.length, ids: decorated.map(m=>m.id), sample: decorated.slice(0,3) });
+        return decorated;
     }
 
     private decorateMessages(conversationId: number, items: any[], limit: number) {
         const decorated = items.map(m => {
-            const original_message_type = m.message_type;
-            let mt = m.message_type;
-            if (typeof mt === 'number') mt = mt === 1 ? 'outgoing' : (mt === 0 ? 'incoming' : 'note');
-            if (mt === 'outgoing' && m?.content_attributes?.public_user) {
-                mt = 'incoming';
-            }
-            // Normalize created_at (Chatwoot gives seconds). Add created_at_ms for correct ordering without mutating original value.
+            const original_message_type = m.message_type; // numeric 0/1/2
+            let direction: 'incoming' | 'outgoing' | 'note';
+            if (original_message_type === 1) direction = 'outgoing';
+            else if (original_message_type === 0) direction = 'incoming';
+            else direction = 'note';
+            // If flagged as public user fallback, treat as incoming so it displays on visitor side
+            if (direction === 'outgoing' && m?.content_attributes?.public_user) direction = 'incoming';
             const created_at_raw = m.created_at;
             const created_at_ms = typeof created_at_raw === 'number' && created_at_raw < 1e12 ? created_at_raw * 1000 : created_at_raw;
-            const direction = mt === 'incoming' ? 'incoming' : (m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming'));
+            const side = direction === 'incoming' ? 'visitor' : 'agent';
             return {
                 ...m,
-                message_type: mt,
+                message_type: original_message_type, // preserve numeric
                 direction,
-                isAdmin: typeof m.isAdmin === 'boolean' ? m.isAdmin : direction === 'outgoing',
-                isAnonymous: typeof m.isAnonymous === 'boolean' ? m.isAnonymous : direction === 'incoming',
+                side,
+                isAdmin: direction === 'outgoing',
+                isAnonymous: direction !== 'outgoing',
                 sender: m.sender,
                 original_message_type,
                 created_at_ms,
@@ -407,7 +355,8 @@ export class ChatwootService {
             if (at !== bt) return at - bt;
             return (a.id ?? 0) - (b.id ?? 0);
         });
-        return decorated.length > limit ? decorated.slice(decorated.length - limit) : decorated;
+        // No filtering, just return all decorated messages for the conversation
+        return decorated;
     }
 
     private async listAccountsSafe() {
@@ -675,15 +624,14 @@ export class ChatwootService {
         let items: any[] = [];
         let meta: any = {};
         
-        // Extract messages and metadata
-        if (Array.isArray(json)) {
-            items = json;
-        } else if (json?.payload && Array.isArray(json.payload)) {
+        // FIX: The primary bug is here. The API returns { payload: [messages], meta: {...} }.
+        // The old code had flawed detection logic. This now correctly and exclusively checks for the `payload` key.
+        if (json?.payload && Array.isArray(json.payload)) {
             items = json.payload;
             meta = json.meta || {};
-        } else if (Array.isArray(json?.data)) {
-            items = json.data;
-            meta = json.meta || {};
+        } else if (Array.isArray(json)) {
+            // Fallback for older or different API versions
+            items = json;
         }
 
         // Apply same caching logic as listMessages
@@ -700,19 +648,22 @@ export class ChatwootService {
 
         // Enhanced message decoration with sender information
         const decorated = items.map(m => {
-            let mt = m.message_type;
-            if (typeof mt === 'number') mt = mt === 1 ? 'outgoing' : (mt === 0 ? 'incoming' : 'note');
-            if (mt === 'outgoing' && m?.content_attributes?.public_user) {
-                mt = 'incoming';
+            const isOutgoing = m.message_type === 1 || m.sender?.type === 'user';
+            let direction = isOutgoing ? 'outgoing' : 'incoming';
+
+            // Allow overriding for public anonymous messages sent via admin endpoint
+            if (direction === 'outgoing' && m?.content_attributes?.public_user) {
+                direction = 'incoming';
             }
-            const direction = mt === 'incoming' ? 'incoming' : (m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming'));
+            
             return {
                 ...m,
-                message_type: mt,
+                message_type: direction,
                 direction,
-                isAdmin: typeof m.isAdmin === 'boolean' ? m.isAdmin : direction === 'outgoing',
-                isAnonymous: typeof m.isAnonymous === 'boolean' ? m.isAnonymous : direction === 'incoming',
-                sender_name: m.sender?.name || (direction === 'outgoing' ? 'Agent' : 'Visitor'),
+                side: direction === 'outgoing' ? 'agent' : 'visitor',
+                isAdmin: direction === 'outgoing',
+                isAnonymous: direction !== 'outgoing',
+                sender_name: m.sender?.name || (direction === 'outgoing' ? 'Agent' : 'You'),
                 sender_avatar: m.sender?.thumbnail || m.sender?.avatar_url,
             };
         }).sort((a, b) => {
