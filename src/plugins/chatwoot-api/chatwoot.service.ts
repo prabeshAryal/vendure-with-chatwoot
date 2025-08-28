@@ -103,7 +103,7 @@ export class ChatwootService {
             
             // Extract session ID from source ID for session continuity
             const sessionId = input.sourceId.includes('-') ? input.sourceId.split('-').pop() : input.sourceId;
-            const contactId = await this.ensureContact(input.email, input.name, sessionId);
+            const contactId = await this.ensureContact(input.email ?? undefined, input.name ?? undefined, sessionId);
             this.log('Ensured contact for conversation', { contactId, sessionId });
             const body: any = {
                 inbox_id: this.options.inboxId,

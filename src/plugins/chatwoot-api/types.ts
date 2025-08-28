@@ -37,10 +37,10 @@ export interface ChatwootNewConversationInput {
     /** A unique string you control to group a visitor/contact (maps to source_id in Chatwoot). */
     sourceId: string;
     /** Optional name for the contact. */
-    name?: string;
+    name?: string | null;
     /** Optional email for the contact. */
-    email?: string;
+    email?: string | null;
     /** First message content to post right after conversation creation. */
-    initialMessage?: string;
+    initialMessage?: string | null;
 }
 

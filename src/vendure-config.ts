@@ -20,6 +20,16 @@ const serverPort = +process.env.PORT || 3000;
 
 // Public chat moved into ChatFeaturePlugin
 
+const adminUiApp = compileUiExtensions({
+    outputPath: path.join(__dirname, '../admin-ui'),
+    extensions: [
+        ChatwootApiPlugin.ui,
+    ],
+    devMode: true,
+    watchPort: serverPort + 2,
+    ngCompilerPath: path.join(__dirname, '../node_modules/@angular/cli/bin/ng.js'),
+});
+
 export const config: VendureConfig = {
     apiOptions: {
         port: serverPort,
@@ -97,13 +107,7 @@ export const config: VendureConfig = {
             adminUiConfig: {
                 apiPort: serverPort,
             },
-            app: compileUiExtensions({
-                outputPath: path.join(__dirname, '../admin-ui'),
-                extensions: [
-                    ChatwootApiPlugin.ui,
-                ],
-                devMode: true,
-            }),
+            app: adminUiApp,
         }),
         ChatwootApiPlugin.init({
             baseUrl: process.env.CHATWOOT_BASE_URL,

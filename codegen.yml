@@ -1,0 +1,9 @@
+overwrite: true
+schema:
+  - "src/plugins/chatwoot-api/schemas/shop.schema.ts"
+  - "src/plugins/chatwoot-api/schemas/admin.schema.ts"
+generates:
+  src/plugins/chatwoot-api/generated-types.ts:
+    plugins:
+      - "typescript"
+      - "typescript-resolvers"
