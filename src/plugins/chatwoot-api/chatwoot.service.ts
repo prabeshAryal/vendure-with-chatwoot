@@ -189,7 +189,7 @@ export class ChatwootService {
 
     async listConversations(limit = 10) {
         await this.ensureCacheLoaded();
-        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations?include=contact,last_message&status=all&sort=last_activity_at&order=descending&page=1&per_page=${limit}`;
+        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations?assignee_type=all&include=contact,last_message&status=all&sort=last_activity_at&order=descending&page=1&per_page=${limit}`;
         this.log('Listing Chatwoot conversations', { limit, include: 'contact,last_message' });
         const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
@@ -520,31 +520,14 @@ export class ChatwootService {
         return this.sendMessage(conversationId, content, 'outgoing');
     }
 
-    async resolveConversationAsAgent(conversationId: number): Promise<boolean> {
-        // Use agent credentials if provided
-        const originalToken = this.options.apiToken;
-        const originalAcct = this.options.accountId;
-        try {
-            if (this.options.agentApiToken) {
-                (this.options as any).apiToken = this.options.agentApiToken;
-                if (this.options.agentAccountId) {
-                    (this.options as any).accountId = this.options.agentAccountId;
-                }
-            }
-            const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/toggle_status`;
-            const res = await fetchFn(url, { method: 'POST', headers: this.headers() });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(`resolve_failed ${res.status} ${text}`);
-            }
-            return true;
-        } finally {
-            // restore
-            (this.options as any).apiToken = originalToken;
-            if (this.options.agentAccountId) {
-                (this.options as any).accountId = originalAcct;
-            }
+    async toggleConversationStatus(conversationId: number): Promise<boolean> {
+        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/toggle_status`;
+        const res = await fetchFn(url, { method: 'POST', headers: this.headers() });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`toggle_status_failed ${res.status} ${text}`);
         }
+        return true;
     }
 
     // Enhanced agent management

@@ -13,7 +13,6 @@ const Q_CONVS = gql`
             last_message_content
             updated_at
             status
-            resolved
         }
     }
 `;
@@ -43,9 +42,9 @@ const M_SEND = gql`
     }
 `;
 
-const M_RESOLVE = gql`
+const M_TOGGLE_STATUS = gql`
     mutation($id:ID!) {
-        resolveChatwootConversation(conversationId:$id)
+        toggleChatwootConversationStatus(conversationId:$id)
     }
 `;
 
@@ -142,6 +141,7 @@ const M_RESOLVE = gql`
         padding: 2px 8px;
         border-radius: 12px;
         font-weight: 500;
+        text-transform: capitalize;
       }
       .status-resolved {
         background: #c8e6c9;
@@ -150,6 +150,10 @@ const M_RESOLVE = gql`
       .status-open {
         background: #fff9c4;
         color: #f57f17;
+      }
+      .status-pending {
+        background: #ffccbc;
+        color: #c85a3e;
       }
       .message-bubble-row {
         display: flex;
@@ -209,6 +213,10 @@ const M_RESOLVE = gql`
         background: #2e7d32;
         color: white;
       }
+      .btn-danger {
+        background: #d32f2f;
+        color: white;
+      }
       .text-input {
         flex: 1;
         padding: 10px 14px;
@@ -232,8 +240,8 @@ const M_RESOLVE = gql`
           <li *ngFor="let c of conversations()" (click)="select(c)" class="conversation-item" [class.selected]="c.id === selectedId()">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="id">#{{c.id}}</span>
-              <span class="status-badge" [class.status-open]="!c.resolved" [class.status-resolved]="c.resolved">
-                {{ c.resolved ? 'Resolved' : 'Open' }}
+              <span class="status-badge" [ngClass]="'status-' + c.status">
+                {{ c.status }}
               </span>
             </div>
             <div class="preview" title="{{c.last_message_content}}">{{c.last_message_content || 'No messages yet.'}}</div>
@@ -245,8 +253,10 @@ const M_RESOLVE = gql`
         <ng-container *ngIf="selectedId(); else noSelection">
           <div class="chat-header">
             <h3 style="margin:0;">Conversation #{{selectedId()}}</h3>
-            <button class="btn btn-success" (click)="resolve(selectedId())" [disabled]="isCurrentConversationResolved()">
-              {{ isCurrentConversationResolved() ? 'Resolved' : 'Mark as Resolved' }}
+            <button class="btn" 
+                    [ngClass]="isCurrentConversationResolved() ? 'btn-danger' : 'btn-success'"
+                    (click)="toggleStatus(selectedId())">
+              {{ isCurrentConversationResolved() ? 'Reopen' : 'Mark as Resolved' }}
             </button>
           </div>
           <div class="messages-container" #messagesContainer>
@@ -318,9 +328,9 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
     }
   }
 
-  resolve(conversationId: number | null) {
+  toggleStatus(conversationId: number | null) {
     if (!conversationId) return;
-    this.apollo.mutate({ mutation: M_RESOLVE, variables: { id: conversationId }, fetchPolicy: 'no-cache' })
+    this.apollo.mutate({ mutation: M_TOGGLE_STATUS, variables: { id: conversationId }, fetchPolicy: 'no-cache' })
       .subscribe({
         next: () => this.reload(),
         error: () => this.reload(),
@@ -371,7 +381,7 @@ export class ChatwootHomeComponent implements OnDestroy, AfterViewChecked {
 
   isCurrentConversationResolved(): boolean {
       const selected = this.conversations().find(c => c.id === this.selectedId());
-      return selected ? selected.resolved : false;
+      return selected ? selected.status === 'resolved' : false;
   }
 
   private startPolling() {

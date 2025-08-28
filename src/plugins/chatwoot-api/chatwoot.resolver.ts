@@ -7,10 +7,10 @@ import * as crypto from 'crypto';
 export class ChatwootResolver {
     constructor(private readonly chatwootService: ChatwootService) {}
 
-    @Mutation('resolveChatwootConversation')
-    async resolveChatwootConversation(@Args('conversationId') conversationId: string) {
-    await this.chatwootService.resolveConversationAsAgent(Number(conversationId));
-    return true;
+    @Mutation('toggleChatwootConversationStatus')
+    async toggleChatwootConversationStatus(@Args('conversationId') conversationId: string) {
+        await this.chatwootService.toggleConversationStatus(Number(conversationId));
+        return true;
     }
 
     // Admin API resolvers

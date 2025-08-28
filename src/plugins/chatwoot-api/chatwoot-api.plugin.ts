@@ -76,7 +76,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 createChatwootPublicConversation(input: ChatwootNewConversationInput!): ChatwootConversation!
                 sendChatwootMessage(conversationId: ID!, content: String!, messageType: String = "outgoing"): ChatwootMessageResult!
                 sendChatwootPublicMessage(conversationId: ID!, content: String!): ChatwootMessageResult!
-                resolveChatwootConversation(conversationId: ID!): Boolean!
+                toggleChatwootConversationStatus(conversationId: ID!): Boolean!
             }
             `,
         resolvers: [ChatwootResolver],
@@ -115,7 +115,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 createChatwootPublicConversation(input: ChatwootNewConversationInput!): ChatwootConversation!
                 sendChatwootMessage(conversationId: ID!, content: String!, messageType: String = "outgoing"): ChatwootMessageResult!
                 sendChatwootPublicMessage(conversationId: ID!, content: String!): ChatwootMessageResult!
-                resolveChatwootConversation(conversationId: ID!): Boolean!
+                toggleChatwootConversationStatus(conversationId: ID!): Boolean!
             }
         `,
         resolvers: [ChatwootResolver],
