@@ -27,90 +27,189 @@ let chatUiServeCount = 0;
                     }
                     const html = `<!doctype html><html><head><meta charset=utf-8><title>Chat Support</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:#0f1115;color:#f5f7fa;display:flex;flex-direction:column;min-height:100vh;-webkit-font-smoothing:antialiased;}h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.5px;}
-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#1d2430,#202a38 40%,#1d2430);border-bottom:1px solid #222;box-shadow:0 1px 2px rgba(0,0,0,.4);}header .dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b98199;}header .sub{font-size:11px;opacity:.65;font-weight:500;}
-#chat{flex:1;display:flex;flex-direction:column;max-width:840px;width:100%;margin:0 auto;padding:8px 14px 120px;overflow-y:auto;scroll-behavior:smooth;}
-.msg{display:flex;gap:10px;margin:10px 0;}
-.msg.agent .bubble{background:#1f2733;border:1px solid #273244;} .msg.user .bubble{background:#2563eb;border:1px solid #1d4ed8;} .bubble{padding:12px 14px;border-radius:14px;max-width:640px;line-height:1.5;font-size:14px;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 2px 4px -2px #0008,0 0 0 1px #0002;color:#e5ecf5;}
-.role{font-size:11px;opacity:.6;margin-bottom:4px;text-transform:uppercase;letter-spacing:.7px;font-weight:600;}
-.msg.user{justify-content:flex-end;} .msg.user .bubble{border-bottom-right-radius:4px;} .msg.agent .bubble{border-bottom-left-radius:4px;}
-footer{position:fixed;left:0;right:0;bottom:0;background:#14181f;border-top:1px solid #222;padding:12px 16px;display:flex;justify-content:center;}form{display:flex;gap:10px;width:100%;max-width:840px;}textarea{flex:1;background:#1b222c;color:#f5f7fa;border:1px solid #2c394b;border-radius:10px;padding:12px 14px;resize:none;min-height:54px;max-height:240px;font-size:14px;line-height:1.4;outline:none;box-shadow:0 0 0 2px transparent;transition:.15s;}textarea:focus{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb55;}button{background:#2563eb;color:#fff;border:none;font-weight:600;padding:0 20px;border-radius:10px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px -2px #2563eb55,0 0 0 1px #1d4ed8;transition:.15s;}button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}button:not(:disabled):hover{background:#1d4ed8;}
-.meta{font-size:11px;opacity:.45;text-align:center;margin-top:30px;} .thinking{display:inline-block;width:26px;text-align:left;} .thinking span{display:inline-block;width:6px;height:6px;margin:0 2px;background:#64748b;border-radius:50%;animation:pulse 1s infinite ease-in-out;}@keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.85);}40%{opacity:.9;transform:scale(1);}}
-.statusline{font-size:11px;opacity:.55;text-align:center;margin-top:6px;}
-.sys{font-size:11px;opacity:.55;text-align:center;margin:14px 0;}
+:root { --brand-color: #3b82f6; --bg-main: #f3f4f6; --bg-secondary: #ffffff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --agent-bubble: #e5e7eb; --user-bubble: var(--brand-color); --user-bubble-text: #ffffff; }
+html.dark { --bg-main: #111827; --bg-secondary: #1f2937; --text-primary: #f9fafb; --text-secondary: #9ca3af; --border-color: #374151; --agent-bubble: #374151; }
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg-main);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh;-webkit-font-smoothing:antialiased; transition: background-color 0.3s, color 0.3s;}
+#app-container{display:flex;flex-direction:column;max-width:800px;width:100%;margin:0 auto;height:100vh;box-shadow:0 0 40px rgba(0,0,0,0.05);}
+header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+header .avatar{width:40px;height:40px;border-radius:50%;background:var(--brand-color);color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;}
+header .info h1{font-size:16px;font-weight:600;}
+header .info .sub{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-top:2px;}
+header .info .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e99;}
+#chat{flex:1;display:flex;flex-direction:column;padding:20px;overflow-y:auto;scroll-behavior:smooth;}
+.msg{display:flex;gap:12px;margin-bottom:16px;max-width:85%;}
+.msg.user{align-self:flex-end;flex-direction:row-reverse;}
+.msg .avatar{width:32px;height:32px;border-radius:50%;background:#9ca3af;color:white;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:14px;flex-shrink:0;align-self:flex-end;}
+.msg.user .avatar{background:var(--brand-color);}
+.msg-content{display:flex;flex-direction:column;}
+.bubble{padding:12px 16px;border-radius:18px;line-height:1.6;font-size:14px;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 2px 4px rgba(0,0,0,0.05);}
+.msg.agent .bubble{background:var(--agent-bubble);color:var(--text-primary);border-bottom-left-radius:4px;}
+.msg.user .bubble{background:var(--user-bubble);color:var(--user-bubble-text);border-bottom-right-radius:4px;}
+.meta{font-size:11px;color:var(--text-secondary);margin-top:6px;padding:0 4px;}
+.msg.user .meta{text-align:right;}
+footer{background:var(--bg-secondary);border-top:1px solid var(--border-color);padding:16px 20px;}
+form{display:flex;gap:12px;align-items:flex-end;}
+textarea{flex:1;background:var(--bg-main);color:var(--text-primary);border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;resize:none;min-height:48px;max-height:200px;font-size:14px;line-height:1.5;outline:none;box-shadow:0 0 0 2px transparent;transition:all .2s ease;}
+textarea:focus{border-color:var(--brand-color);box-shadow:0 0 0 3px #3b82f633;}
+button{background:var(--brand-color);color:#fff;border:none;font-weight:600;width:48px;height:48px;border-radius:12px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;box-shadow:0 4px 12px -2px #3b82f655;}
+button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;}
+button:not(:disabled):hover{background:#2563eb;}
+.typing-indicator{display:flex;gap:4px;align-items:center;padding:12px 16px;}
+.typing-indicator span{width:8px;height:8px;background-color:var(--text-secondary);border-radius:50%;animation:pulse 1.4s infinite ease-in-out both;}
+.typing-indicator span:nth-child(1){animation-delay:-.32s;}
+.typing-indicator span:nth-child(2){animation-delay:-.16s;}
+@keyframes pulse{0%,80%,100%{transform:scale(0);}40%{transform:scale(1);}}
 </style></head><body>
-<header><div class="dot"></div><div><h1>Support Chat</h1><div class="sub" id="sub">Starting session...</div></div></header>
-<main id="chat"></main>
-<footer><form id="chatForm"><textarea id="input" placeholder="Type your message..." autocomplete="off"></textarea><button id="sendBtn" type="submit" disabled>Send</button></form></footer>
+<div id="app-container">
+    <header>
+        <div class="avatar">S</div>
+        <div class="info">
+            <h1>Support Chat</h1>
+            <div class="sub" id="sub"><div class="dot"></div><span id="status-text">Connecting...</span></div>
+        </div>
+    </header>
+    <main id="chat"></main>
+    <footer>
+        <form id="chatForm">
+            <textarea id="input" placeholder="Type your message..." autocomplete="off"></textarea>
+            <button id="sendBtn" type="submit" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </footer>
+</div>
 <script>
 const el = sel => document.querySelector(sel);
 const chat = el('#chat');
 const input = el('#input');
 const sendBtn = el('#sendBtn');
-const sub = el('#sub');
+const statusText = el('#status-text');
 let contactSource = localStorage.getItem('cw_contact_source');
 let conversationId = localStorage.getItem('cw_conversation_id');
 let loading = false; let polling = null; const lastMessageIds = new Set();
-function append(role, content, opts={}){
-    const wrap=document.createElement('div');
-    wrap.className='msg '+role;
-    const bubble=document.createElement('div');
-    bubble.className='bubble';
-    bubble.innerHTML='<div class="role">'+(role==='user'?'You':'Agent')+'</div>'+escapeHtml(content);
-    wrap.appendChild(bubble);
-    chat.appendChild(wrap);
-    requestAnimationFrame(()=>{ chat.scrollTop = chat.scrollHeight; });
-    if(opts.replace){ opts.replace.replaceWith(wrap); }
+
+// Function to smoothly scroll to the bottom of the chat
+function scrollToBottom() {
+    // Using setTimeout ensures the DOM has updated before we try to scroll
+    setTimeout(() => {
+        chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+    }, 100);
 }
 
-// FIX: Removed the unused and confusing getRole() function. The backend now provides a simple 'side' property.
+function append(role, content, timestamp, opts={}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + role;
 
-function escapeHtml(str){ return (str||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c])); }
-function setStatus(t){ sub.textContent=t; }
-async function api(path, opt){
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? 'Y' : 'S';
+
+    const msgContent = document.createElement('div');
+    msgContent.className = 'msg-content';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = escapeHtml(content);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    
+    msgContent.appendChild(bubble);
+    msgContent.appendChild(meta);
+    wrap.appendChild(avatar);
+    wrap.appendChild(msgContent);
+    
+    chat.appendChild(wrap);
+    
+    if(opts.replace){ opts.replace.replaceWith(wrap); }
+    
+    // Always scroll to bottom when a new message is appended
+    scrollToBottom();
+}
+
+function escapeHtml(str) { return (str||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c])); }
+function setStatus(t) { statusText.textContent = t; }
+async function api(path, opt) {
     const r = await fetch(path,{ headers:{'Content-Type':'application/json'}, ...opt});
     const raw = await r.text();
     if(!r.ok){ throw new Error(raw.slice(0,200)); }
     try { return JSON.parse(raw); } catch { throw new Error('Invalid JSON response'); }
 }
-async function start(){ setStatus('Starting session...'); const body = { contactSource, conversationId, name: 'Visitor '+(contactSource?contactSource.slice(-4):'') }; const data = await api('/chat/api/start',{ method:'POST', body: JSON.stringify(body)}); contactSource = data.contactSource; conversationId = data.conversationId; localStorage.setItem('cw_contact_source', contactSource); localStorage.setItem('cw_conversation_id', conversationId); setStatus('Connected'); loadMessages(); if(!polling){ polling=setInterval(loadMessages, 4000); } }
-async function loadMessages(){
+async function start() { 
+    setStatus('Starting session...'); 
+    const body = { contactSource, conversationId, name: 'Visitor '+(contactSource?contactSource.slice(-4):'') }; 
+    const data = await api('/chat/api/start',{ method:'POST', body: JSON.stringify(body)}); 
+    contactSource = data.contactSource; 
+    conversationId = data.conversationId; 
+    localStorage.setItem('cw_contact_source', contactSource); 
+    localStorage.setItem('cw_conversation_id', conversationId); 
+    setStatus('Connected'); 
+    loadMessages(); 
+    if(!polling){ polling=setInterval(loadMessages, 4000); } 
+}
+async function loadMessages() {
     if(!conversationId) return;
     try {
         const list = await api('/chat/api/messages?contact='+encodeURIComponent(contactSource)+'&conversation='+conversationId);
         list.sort((a,b)=>(a.created_at||0)-(b.created_at||0));
-        // If message count changes (e.g. after refresh), clear and re-render all
+        
+        let messagesChanged = false;
         if (list.length !== lastMessageIds.size) {
             chat.innerHTML = '';
             lastMessageIds.clear();
+            messagesChanged = true;
         }
-        for(const m of list){
+
+        for(const m of list) {
             if (!lastMessageIds.has(m.id)) {
                 const role = m.side === 'visitor' ? 'user' : 'agent';
-                append(role, m.content||'');
+                append(role, m.content||'', m.created_at_ms || m.created_at * 1000);
                 lastMessageIds.add(m.id);
+                messagesChanged = true;
             }
         }
-        // Always auto-scroll to the latest message after loading
-        setTimeout(()=>{ chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' }); }, 100);
+        
+        // If messages were re-rendered or new ones added, scroll down
+        if (messagesChanged) {
+            scrollToBottom();
+        }
     } catch(e){ console.warn('msg load', e.message); }
 }
-async function sendMessage(text){
+async function sendMessage(text) {
     if(!text.trim()) return;
     if(!contactSource || !conversationId){
-        try { await start(); } catch(e){ append('agent','(Session error) '+e.message); return; }
+        try { await start(); } catch(e){ append('agent','(Session error) '+e.message, new Date().getTime()); return; }
     }
-    input.value=''; sendBtn.disabled=true;
+    input.value=''; 
+    sendBtn.disabled=true;
+    autoResize();
+
     try {
         await api('/chat/api/messages',{ method:'POST', body: JSON.stringify({ contact: contactSource, conversation: conversationId, content: text })});
-        // Only append after server confirms and loadMessages fetches authoritative list
+        // Let polling handle showing the new message to ensure order
         await loadMessages();
-    } catch(e){ append('agent','(Failed to send) '+e.message); }
+    } catch(e){ 
+        append('agent','(Failed to send) '+e.message, new Date().getTime()); 
+    }
 }
-input.addEventListener('input',()=>{ sendBtn.disabled = !input.value.trim(); autoResize(); });
-function autoResize(){ input.style.height='54px'; const h = Math.min(input.scrollHeight, 240); input.style.height = h+'px'; }
-document.getElementById('chatForm').addEventListener('submit', async e=>{ e.preventDefault(); if(sendBtn.disabled) return; await sendMessage(input.value); });
+function autoResize() { 
+    input.style.height='auto'; 
+    const h = Math.min(input.scrollHeight, 200); 
+    input.style.height = h+'px'; 
+}
+input.addEventListener('input',()=>{ 
+    sendBtn.disabled = !input.value.trim(); 
+    autoResize(); 
+});
+document.getElementById('chatForm').addEventListener('submit', async e=>{ 
+    e.preventDefault(); 
+    if(sendBtn.disabled) return; 
+    await sendMessage(input.value); 
+});
 start();
 // Rapid initial polling (first ~7.5s) to surface early agent replies quickly
 let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(rapidTimer); return;} loadMessages(); },1500);
