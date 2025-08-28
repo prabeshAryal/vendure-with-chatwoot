@@ -310,12 +310,12 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                         const mapped = msgs.map((m: any) => ({
                             id: m.id,
                             content: m.content,
-                            message_type: m.message_type,
+                            message_type: m.message_type === 1 ? 'incoming' : (m.message_type === 0 ? 'outgoing' : m.message_type),
                             created_at: m.created_at,
                             created_at_ms: m.created_at_ms,
-                            direction: m.direction,
-                            side: m.side,
-                            sender_name: m.side === 'visitor' ? 'You' : 'Agent'
+                            direction: (m.message_type === 1 || m.message_type === 'incoming') ? 'incoming' : 'outgoing',
+                            side: (m.message_type === 1 || m.message_type === 'incoming') ? 'visitor' : 'agent',
+                            sender_name: (m.message_type === 1 || m.message_type === 'incoming') ? 'You' : 'Agent'
                         }));
                         // Logger.info('[ChatFeaturePlugin] Mapped array for /chat/api/messages (API only): ' + JSON.stringify(mapped));
                         mapped.sort((a: any, b: any) => (a.created_at_ms || a.created_at || 0) - (b.created_at_ms || b.created_at || 0));
@@ -336,8 +336,18 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                         // Use a fresh service with the primary (account) token to attempt incoming visitor message
                         const publicChatOptions = { ...ChatwootApiPlugin.options, apiToken: ChatwootApiPlugin.options.agentApiToken || ChatwootApiPlugin.options.apiToken };
                         const visitorService = new ChatwootService(publicChatOptions);
+                        // Explicitly set message_type to 'incoming' for visitor messages
                         const msg = await visitorService.sendPublicMessage(cid, content);
-                        return res.json({ id: msg.id, content: msg.content, message_type: msg.message_type, side: 'visitor', sender_name: 'You' });
+                        return res.json({
+                            id: msg.id,
+                            content: msg.content,
+                            message_type: 'incoming',
+                            direction: 'incoming',
+                            side: 'visitor',
+                            sender_name: 'You',
+                            created_at: msg.created_at,
+                            created_at_ms: msg.created_at_ms
+                        });
                     } catch (e: any) {
                         Logger.error(`${logPrefix} sendPublicMessage failed ${e.message}`);
                         return res.status(500).json({ error: 'send_failed', message: e.message });

@@ -325,38 +325,22 @@ export class ChatwootService {
 
     private decorateMessages(conversationId: number, items: any[], limit: number) {
         const decorated = items.map(m => {
-            const original_message_type = m.message_type; // numeric 0/1/2
-            let direction: 'incoming' | 'outgoing' | 'note';
-            if (original_message_type === 1) direction = 'outgoing';
-            else if (original_message_type === 0) direction = 'incoming';
-            else direction = 'note';
-            // If flagged as public user fallback, treat as incoming so it displays on visitor side
-            if (direction === 'outgoing' && m?.content_attributes?.public_user) direction = 'incoming';
-            const created_at_raw = m.created_at;
-            const created_at_ms = typeof created_at_raw === 'number' && created_at_raw < 1e12 ? created_at_raw * 1000 : created_at_raw;
+            const direction = m.message_type === 0 ? 'incoming' : 'outgoing';
             const side = direction === 'incoming' ? 'visitor' : 'agent';
-            const isSystem = direction === 'note';
-            const sender_name = m.sender?.name || (isSystem ? 'System' : side === 'agent' ? 'Agent' : 'You');
+            const sender_name = m.sender?.name || (side === 'agent' ? 'Agent' : 'You');
             return {
-                ...m,
-                message_type: original_message_type, // preserve numeric
-                direction,
-                side,
-                isAdmin: direction === 'outgoing' || isSystem,
-                isAnonymous: direction === 'incoming',
-                sender: m.sender,
-                original_message_type,
-                created_at_ms,
-                isSystem,
-                sender_name,
+                id: m.id,
+                content: m.content,
+                created_at: m.created_at,
+                message_type: direction, // use the string 'incoming' or 'outgoing'
+                direction: direction,
+                side: side,
+                sender_name: sender_name,
+                // for debugging
+                original_message_type: m.message_type,
+                sender_type: m.sender?.type,
             };
-        }).sort((a, b) => {
-            const at = a.created_at_ms || 0;
-            const bt = b.created_at_ms || 0;
-            if (at !== bt) return at - bt;
-            return (a.id ?? 0) - (b.id ?? 0);
-        });
-        // No filtering, just return all decorated messages for the conversation
+        }).sort((a, b) => a.id - b.id);
         return decorated;
     }
 
@@ -497,16 +481,7 @@ export class ChatwootService {
     }
 
     async sendPublicMessage(conversationId: number, content: string) {
-        try {
-            return await this.sendMessage(conversationId, content, 'incoming');
-        } catch (e: any) {
-            const msg = String(e.message || '');
-            if (/Incoming messages are only allowed/i.test(msg) || /\b422\b/.test(msg)) {
-                this.log('Fallback: resending public message as outgoing with public_user flag', { conversationId });
-                return await this.sendMessage(conversationId, content, 'outgoing', { content_attributes: { public_user: true, original_type: 'incoming_attempt' } });
-            }
-            throw e;
-        }
+        return await this.sendMessage(conversationId, content, 'incoming');
     }
 
     async sendAdminMessage(conversationId: number, content: string) {
