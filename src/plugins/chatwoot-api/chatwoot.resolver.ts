@@ -1,10 +1,24 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootApiPlugin } from './chatwoot-api.plugin';
+import * as crypto from 'crypto';
 
 @Resolver()
 export class ChatwootResolver {
     constructor(private readonly chatwootService: ChatwootService) {}
+
+    @Mutation('resolveChatwootConversation')
+    async resolveChatwootConversation(@Args('conversationId') conversationId: string) {
+        // Use Chatwoot internal API to resolve conversation
+        const fetchImpl: any = (global as any).fetch || ((): any => { try { const nf = require('node-fetch'); return nf.default || nf; } catch { return undefined; } })();
+        if (!fetchImpl) throw new Error('fetch_unavailable');
+        const opts: any = ChatwootApiPlugin.options;
+        const url = `${opts.baseUrl}/api/v1/accounts/${opts.accountId}/conversations/${conversationId}/toggle_status`;
+        const r = await fetchImpl(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'api_access_token': opts.apiToken } });
+        const raw = await r.text();
+        if (!r.ok) throw new Error(`resolve_failed: ${raw}`);
+        return true;
+    }
 
     // Admin API resolvers
     @Query('chatwootConversations')
@@ -72,6 +86,20 @@ export class ChatwootResolver {
         return {
             baseUrl: opts.baseUrl,
             websiteToken: opts.websiteToken ?? null,
+            enforceUserIdentity: !!opts.enforceUserIdentity,
         };
+    }
+
+    @Query('chatwootIdentityHash')
+    chatwootIdentityHash(@Args('identifier') identifier: string) {
+        const opts: any = ChatwootApiPlugin.options;
+        if (!opts?.hmacToken) {
+            throw new Error('identity_hmac_not_configured');
+        }
+        if (!identifier || identifier.length > 512) {
+            throw new Error('invalid_identifier');
+        }
+        const h = crypto.createHmac('sha256', opts.hmacToken).update(identifier).digest('hex');
+        return h;
     }
 }

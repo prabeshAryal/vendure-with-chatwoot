@@ -1,5 +1,6 @@
 import { PluginCommonModule, Type, VendurePlugin, Logger } from '@vendure/core';
 import { ChatwootApiPlugin } from '../plugins/chatwoot-api/chatwoot-api.plugin';
+import { ChatwootService } from '../plugins/chatwoot-api/chatwoot.service';
 
 import { CHAT_FEATURE_PLUGIN_OPTIONS } from './constants';
 import { PluginInitOptions } from './types';
@@ -50,8 +51,21 @@ const sendBtn = el('#sendBtn');
 const sub = el('#sub');
 let contactSource = localStorage.getItem('cw_contact_source');
 let conversationId = localStorage.getItem('cw_conversation_id');
-let loading = false; let polling = null; let lastMessageCount = 0;
-function append(role, content, opts={}){ const wrap=document.createElement('div'); wrap.className='msg '+role; const bubble=document.createElement('div'); bubble.className='bubble'; bubble.innerHTML='<div class="role">'+(role==='user'?'You':'Support')+'</div>'+escapeHtml(content); wrap.appendChild(bubble); chat.appendChild(wrap); requestAnimationFrame(()=>{ chat.scrollTop = chat.scrollHeight; }); if(opts.replace){ opts.replace.replaceWith(wrap); } }
+let loading = false; let polling = null; const lastMessageIds = new Set();
+function append(role, content, opts={}){
+    const wrap=document.createElement('div');
+    wrap.className='msg '+role;
+    const bubble=document.createElement('div');
+    bubble.className='bubble';
+    bubble.innerHTML='<div class="role">'+(role==='user'?'You':'Agent')+'</div>'+escapeHtml(content);
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    requestAnimationFrame(()=>{ chat.scrollTop = chat.scrollHeight; });
+    if(opts.replace){ opts.replace.replaceWith(wrap); }
+}
+
+// FIX: Removed the unused and confusing getRole() function. The backend now provides a simple 'side' property.
+
 function escapeHtml(str){ return (str||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c])); }
 function setStatus(t){ sub.textContent=t; }
 async function api(path, opt){
@@ -61,24 +75,44 @@ async function api(path, opt){
     try { return JSON.parse(raw); } catch { throw new Error('Invalid JSON response'); }
 }
 async function start(){ setStatus('Starting session...'); const body = { contactSource, conversationId, name: 'Visitor '+(contactSource?contactSource.slice(-4):'') }; const data = await api('/chat/api/start',{ method:'POST', body: JSON.stringify(body)}); contactSource = data.contactSource; conversationId = data.conversationId; localStorage.setItem('cw_contact_source', contactSource); localStorage.setItem('cw_conversation_id', conversationId); setStatus('Connected'); loadMessages(); if(!polling){ polling=setInterval(loadMessages, 4000); } }
-async function loadMessages(){ if(!conversationId) return; try { const list = await api('/chat/api/messages?contact='+encodeURIComponent(contactSource)+'&conversation='+conversationId); if(list.length === lastMessageCount) return; lastMessageCount = list.length; chat.innerHTML=''; list.forEach(m=> append(m.message_type==='incoming'?'user':'agent', m.content||'')); } catch(e){ console.warn('msg load', e.message); }
- }
+async function loadMessages(){
+    if(!conversationId) return;
+    try {
+        const list = await api('/chat/api/messages?contact='+encodeURIComponent(contactSource)+'&conversation='+conversationId);
+        list.sort((a,b)=>(a.created_at||0)-(b.created_at||0));
+        
+        // FIX: This is the primary bug fix. Instead of clearing the entire chat on every poll (which causes flickering),
+        // we now check if a message has already been rendered and only append new ones.
+        // This makes the UI performant and allows users to scroll up without interruption.
+        for(const m of list){
+            if (!lastMessageIds.has(m.id)) {
+                const role = m.side === 'visitor' ? 'user' : 'agent';
+                append(role, m.content||'');
+                lastMessageIds.add(m.id);
+            }
+        }
+    } catch(e){ console.warn('msg load', e.message); }
+}
 async function sendMessage(text){
-    if(!text.trim()) return; 
-    // Ensure session
+    if(!text.trim()) return;
     if(!contactSource || !conversationId){
         try { await start(); } catch(e){ append('agent','(Session error) '+e.message); return; }
     }
-    append('user', text); input.value=''; sendBtn.disabled=true; 
-    try { 
-        await api('/chat/api/messages',{ method:'POST', body: JSON.stringify({ contact: contactSource, conversation: conversationId, content: text })}); 
-        await loadMessages(); 
+    const temp = { content: text };
+    append('user', text, { replace: null });
+    input.value=''; sendBtn.disabled=true;
+    try {
+        await api('/chat/api/messages',{ method:'POST', body: JSON.stringify({ contact: contactSource, conversation: conversationId, content: text })});
+        // Refresh after send to show server-authoritative ordering
+        await loadMessages();
     } catch(e){ append('agent','(Failed to send) '+e.message); }
 }
 input.addEventListener('input',()=>{ sendBtn.disabled = !input.value.trim(); autoResize(); });
 function autoResize(){ input.style.height='54px'; const h = Math.min(input.scrollHeight, 240); input.style.height = h+'px'; }
 document.getElementById('chatForm').addEventListener('submit', async e=>{ e.preventDefault(); if(sendBtn.disabled) return; await sendMessage(input.value); });
 start();
+// Rapid initial polling (first ~7.5s) to surface early agent replies quickly
+let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(rapidTimer); return;} loadMessages(); },1500);
 </script></body></html>`;
                     chatUiServeCount++;
                     if (chatUiServeCount === 1) {
@@ -109,236 +143,127 @@ start();
             }
         });
 
-    // Public Chatwoot (Public API) single-conversation endpoints
+    // Public Chat endpoints (internal API backed) replacing failing public API usage
+    // Use primary token for public chat to attribute messages correctly as visitor
+    const chatwootService = new ChatwootService(ChatwootApiPlugin.options);
     config.apiOptions.middleware.push({
-            route: '/chat/api',
-            handler: async (req: any, res: any, next: any) => {
-                // Use CHATWOOT_INBOX_ID as the inbox identifier for public API
-                const inboxIdentifier = process.env.CHATWOOT_INBOX_ID;
-                const baseUrl = ChatwootApiPlugin.options.baseUrl?.replace(/\/$/, '') || '';
-                if (!inboxIdentifier || !baseUrl) {
-                    Logger.error(`[PublicChat] Missing configuration - inboxId: ${!!inboxIdentifier}, baseUrl: ${!!baseUrl}`);
-                    return res.status(500).json({
-                        error: 'chat_config_incomplete',
-                        missing: { inboxId: !inboxIdentifier, baseUrl: !baseUrl },
-                        env: {
-                            CHATWOOT_INBOX_ID: !!process.env.CHATWOOT_INBOX_ID,
-                            CHATWOOT_BASE_URL: !!process.env.CHATWOOT_BASE_URL
-                        },
-                        hint: 'Set CHATWOOT_INBOX_ID and CHATWOOT_BASE_URL in your environment',
-                        actualValues: {
-                            inboxId: inboxIdentifier || 'missing',
-                            baseUrl: baseUrl || 'missing'
-                        }
-                    });
-                }
-                // Resolve fetch implementation safely
-                let fetchImpl: any = (global as any).fetch;
-                if (typeof fetchImpl !== 'function') {
-                    try { const nf = require('node-fetch'); fetchImpl = nf.default || nf; } catch {}
-                }
-                const logPrefix = '[PublicChat]';
-                function safeJsonParse(txt: string) { try { return JSON.parse(txt); } catch { return undefined; } }
-                try {
-                    // Normalize path (support potential full path values)
-                    const full = req.originalUrl || req.url || '';
-                    const rel = (req.path || '').replace(/^\/chat\/api/, '') || '';
-                    const ends = (suffix: string) => full.endsWith(suffix) || rel === suffix || rel === '/'+suffix;
-                    Logger.debug(`${logPrefix} Incoming ${req.method} full=${full} rel=${rel}`);
-                    // Start session: create or reuse contact + conversation
-                    if (req.method === 'POST' && ends('/start')) {
-                        const { contactSource, conversationId, name } = req.body || {};
-                        let source = contactSource;
-                        // Create contact if no source
-                        if (!source) {
-                            const bodyPayload = { 
-                                name: name || 'Visitor',
-                                email: `visitor-${Date.now()}@example.com`, // Required by some Chatwoot versions
-                                custom_attributes: { 
-                                    created_via: 'public-chat', 
-                                    ts: Date.now(),
-                                    user_agent: req.headers['user-agent'] || 'unknown'
-                                } 
-                            };
-                            
-                            // Try multiple API endpoint formats for compatibility
-                            const possibleUrls = [
-                                `${baseUrl}/public/api/v1/inboxes/${inboxIdentifier}/contacts`,
-                                `${baseUrl}/api/v1/accounts/${process.env.CHATWOOT_ACCOUNT_ID}/inboxes/${inboxIdentifier}/contacts`,
-                                `${baseUrl}/api/v1/inboxes/${inboxIdentifier}/contacts`
-                            ];
-                            
-                            let contactRes: any = null;
-                            let lastError = '';
-                            
-                            for (const url of possibleUrls) {
-                                try {
-                                    Logger.debug(`[PublicChat] Trying contact creation at: ${url}`);
-                                    contactRes = await fetchImpl(url, {
-                                        method: 'POST', 
-                                        headers: { 'Content-Type': 'application/json' }, 
-                                        body: JSON.stringify(bodyPayload)
-                                    });
-                                    
-                                    if (contactRes.ok) {
-                                        Logger.debug(`[PublicChat] Contact creation successful with URL: ${url}`);
-                                        break;
-                                    } else {
-                                        const errorText = await contactRes.text();
-                                        lastError = `${contactRes.status}: ${errorText}`;
-                                        Logger.debug(`[PublicChat] Failed with ${url}: ${lastError}`);
-                                        contactRes = null;
-                                    }
-                                } catch (e: any) {
-                                    lastError = e.message;
-                                    Logger.debug(`[PublicChat] Exception with ${url}: ${lastError}`);
-                                    contactRes = null;
+        route: '/chat/api',
+        handler: async (req: any, res: any, next: any) => {
+            const full = req.originalUrl || req.url || '';
+            const rel = (req.path || '').replace(/^\/chat\/api/, '') || '';
+            const ends = (suffix: string) => full.endsWith(suffix) || rel === suffix || rel === '/' + suffix;
+            const logPrefix = '[PublicChatInternal]';
+            try {
+                // Start / resume session
+                if (req.method === 'POST' && ends('/start')) {
+                    const { contactSource, conversationId, name } = req.body || {};
+                    const baseOk = !!ChatwootApiPlugin.options.baseUrl && !!ChatwootApiPlugin.options.accountId && !!ChatwootApiPlugin.options.inboxId;
+                    if (!baseOk) {
+                        return res.status(500).json({ error: 'chat_config_incomplete', details: {
+                            baseUrl: ChatwootApiPlugin.options.baseUrl || null,
+                            accountId: ChatwootApiPlugin.options.accountId,
+                            inboxId: ChatwootApiPlugin.options.inboxId
+                        }});
+                    }
+                    let source = contactSource || `sess-${Date.now().toString(36)}-${Math.random().toString(36).slice(-6)}`;
+                    let convId = conversationId;
+                    // Reuse existing conversation for the same sourceId if possible
+                    if (!convId) {
+                        try {
+                            const existing = await chatwootService.findConversationBySourceId(source);
+                            if (existing?.id) {
+                                convId = existing.id;
+                                // If existing conversation is resolved, start a fresh one for new session continuity
+                                if ((existing as any).status === 'resolved' || (existing as any).resolved) {
+                                    convId = undefined;
                                 }
                             }
-                            
-                            if (!contactRes || !contactRes.ok) {
-                                Logger.error(`[PublicChat] All contact creation URLs failed. Last error: ${lastError}`);
-                                return res.status(500).json({ 
-                                    error: 'contact_create_failed', 
-                                    lastError,
-                                    triedUrls: possibleUrls.length,
-                                    inboxId: inboxIdentifier,
-                                    baseUrl: baseUrl
-                                });
-                            }
-                            
-                            const raw = await contactRes.text();
-                            Logger.debug(`[PublicChat] Contact create response: ${contactRes.status} ${raw.slice(0, 200)}`);
-                            const cj = contactRes.headers.get('content-type')?.includes('application/json') ? safeJsonParse(raw) : undefined;
-                            if (!contactRes.ok) {
-                                Logger.error(`[PublicChat] Contact create failed ${contactRes.status} raw=${raw.slice(0,300)}`);
-                                return res.status(contactRes.status).json({ 
-                                    error: 'contact_create_failed', 
-                                    status: contactRes.status,
-                                    response: raw.slice(0, 200)
-                                });
-                            }
-                            source = cj?.source_id || cj?.id || cj?.contact?.source_id || cj?.contact?.id;
-                            if (!source) {
-                                Logger.error(`[PublicChat] Contact create missing source_id keys=${Object.keys(cj||{})}`);
-                                return res.status(500).json({ 
-                                    error: 'contact_source_missing',
-                                    availableKeys: Object.keys(cj || {}),
-                                    response: cj
-                                });
-                            }
-                            Logger.debug(`[PublicChat] Contact established source=${source}`);
-                        }
-                        if (!source) return res.status(500).json({ error: 'contact_source_unresolved' });
-                        let convId = conversationId;
-                        if (!convId) {
-                            const convRes = await fetchImpl(`${baseUrl}/public/api/v1/inboxes/${inboxIdentifier}/contacts/${source}/conversations`, { 
-                                method: 'POST' 
-                            });
-                            const cRaw = await convRes.text();
-                            Logger.debug(`[PublicChat] Conversation create response: ${convRes.status} ${cRaw.slice(0, 200)}`);
-                            const convJson = convRes.headers.get('content-type')?.includes('application/json') ? safeJsonParse(cRaw) : undefined;
-                            if (!convRes.ok) {
-                                Logger.error(`[PublicChat] Conversation create failed ${convRes.status} raw=${cRaw.slice(0,300)}`);
-                                return res.status(convRes.status).json({ 
-                                    error: 'conversation_create_failed', 
-                                    status: convRes.status,
-                                    response: cRaw.slice(0, 200)
-                                });
-                            }
-                            convId = convJson?.id || convJson?.conversation_id || convJson?.conversation?.id;
-                            if (!convId) {
-                                Logger.error(`[PublicChat] Conversation response missing id keys=${Object.keys(convJson||{})}`);
-                                return res.status(500).json({ 
-                                    error: 'conversation_id_missing',
-                                    availableKeys: Object.keys(convJson || {}),
-                                    response: convJson
-                                });
-                            }
-                            Logger.debug(`[PublicChat] Conversation created id=${convId}`);
-                        }
-                        if (!convId) return res.status(500).json({ error: 'conversation_create_unresolved' });
-                        return res.json({ contactSource: source, conversationId: convId });
+                        } catch {}
                     }
-                    // List messages
-                    if (req.method === 'GET' && ends('/messages')) {
-                        const { contact, conversation } = req.query || {};
-                        if (!contact || !conversation) return res.status(400).json({ error: 'Missing contact/conversation parameters' });
-                        const msgRes = await fetchImpl(`${baseUrl}/public/api/v1/inboxes/${inboxIdentifier}/contacts/${contact}/conversations/${conversation}/messages`);
-                        const msgRaw = await msgRes.text();
-                        Logger.debug(`[PublicChat] Messages list response: ${msgRes.status} ${msgRaw.slice(0, 100)}`);
-                        if (!msgRes.ok) {
-                            return res.status(msgRes.status).json({ 
-                                error: 'upstream_error', 
-                                status: msgRes.status,
-                                response: msgRaw.slice(0, 200)
+                    if (!convId) {
+                        try {
+                            const conv = await chatwootService.createConversation({
+                                sourceId: source,
+                                name: name || 'Visitor',
+                                email: undefined,
                             });
+                            convId = conv?.id;
+                        } catch (e: any) {
+                            Logger.error(`${logPrefix} createConversation failed ${e.message}`);
+                            return res.status(500).json({ error: 'conversation_create_failed', message: e.message });
                         }
-                        const arr = safeJsonParse(msgRaw) || [];
-                        const mapped = Array.isArray(arr) ? arr.map((m: any) => ({ 
-                            id: m.id, 
-                            content: m.content, 
-                            message_type: m.message_type,
-                            created_at: m.created_at,
-                            sender: m.sender
-                        })) : [];
-                        return res.json(mapped);
                     }
-                    // Send message (incoming from user)
-                    if (req.method === 'POST' && ends('/messages')) {
-                        const { contact, conversation, content } = req.body || {};
-                        if (!contact || !conversation || !content) {
-                            return res.status(400).json({ error: 'Missing required fields: contact, conversation, content' });
-                        }
-                        const payload = { content, echo_id: 'echo-'+Date.now() };
-                        const sendRes = await fetchImpl(`${baseUrl}/public/api/v1/inboxes/${inboxIdentifier}/contacts/${contact}/conversations/${conversation}/messages`, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-                        });
-                        const raw = await sendRes.text();
-                        Logger.debug(`[PublicChat] Send message response: ${sendRes.status} ${raw.slice(0, 100)}`);
-                        const jr = sendRes.headers.get('content-type')?.includes('application/json') ? safeJsonParse(raw) : undefined;
-                        if (!sendRes.ok) {
-                            Logger.error(`${logPrefix} Send failed ${sendRes.status} raw=${raw.slice(0,200)}`);
-                            return res.status(sendRes.status).json({ 
-                                error: 'send_failed', 
-                                status: sendRes.status,
-                                response: raw.slice(0, 200)
-                            });
-                        }
-                        return res.json({ 
-                            id: jr?.id, 
-                            content: jr?.content, 
-                            message_type: jr?.message_type,
-                            echo_id: jr?.echo_id
-                        });
-                    }
-                    // Resolve conversation
-                    if (req.method === 'POST' && ends('/resolve')) {
-                        const { contact, conversation } = req.body || {};
-                        if (!contact || !conversation) {
-                            return res.status(400).json({ error: 'Missing required fields: contact, conversation' });
-                        }
-                        const resolveRes = await fetchImpl(`${baseUrl}/public/api/v1/inboxes/${inboxIdentifier}/contacts/${contact}/conversations/${conversation}/toggle_status`, { 
-                            method: 'POST' 
-                        });
-                        const raw = await resolveRes.text();
-                        Logger.debug(`[PublicChat] Resolve response: ${resolveRes.status} ${raw.slice(0, 100)}`);
-                        if (!resolveRes.ok) {
-                            return res.status(resolveRes.status).json({ 
-                                error: 'resolve_failed', 
-                                status: resolveRes.status,
-                                response: raw.slice(0, 200)
-                            });
-                        }
-                        return res.json({ resolved: true, conversation });
-                    }
-                    next();
-                } catch (e: any) {
-                    Logger.error(`${logPrefix} Handler error ${e.message}`);
-                    res.status(500).json({ error: e.message });
+                    if (!convId) return res.status(500).json({ error: 'conversation_unresolved' });
+                    return res.json({ contactSource: source, conversationId: convId });
                 }
+                // List messages (fresh, include both sides)
+                if (req.method === 'GET' && ends('/messages')) {
+                    const { conversation } = req.query || {};
+                    if (!conversation) return res.status(400).json({ error: 'missing_conversation' });
+                    const cid = Number(conversation);
+                    if (Number.isNaN(cid)) return res.status(400).json({ error: 'invalid_conversation' });
+                    try {
+                        const msgs = await chatwootService.listMessagesFresh(cid, 120);
+                        const mapped = msgs.map(m => {
+                            const orig: any = (m as any).original_message_type ?? (m as any).message_type;
+                            let side: 'visitor' | 'agent';
+                            if (orig === 0 || orig === 'incoming') side = 'visitor';
+                            else if (orig === 1 || orig === 'outgoing') side = 'agent';
+                            else if (orig === 2 || orig === 'note') side = 'agent'; // system/activity -> agent side
+                            else side = 'agent';
+                            const sender_name = side === 'visitor' ? 'You' : 'Agent';
+                            const direction = side === 'visitor' ? 'incoming' : 'outgoing';
+                            return { id: (m as any).id, content: (m as any).content, message_type: orig, created_at: (m as any).created_at, direction, sender_name, side };
+                        }).sort((a,b)=> (a.created_at||0)-(b.created_at||0));
+                        return res.json(mapped);
+                    } catch (e: any) {
+                        Logger.error(`${logPrefix} listMessages failed ${e.message}`);
+                        return res.status(500).json({ error: 'messages_list_failed', message: e.message });
+                    }
+                }
+        // Send message: treat as visitor (incoming) using account token; fallback will mark as outgoing with public_user if needed
+        if (req.method === 'POST' && ends('/messages')) {
+                    const { conversation, content } = req.body || {};
+                    if (!conversation || !content) return res.status(400).json({ error: 'missing_fields' });
+                    const cid = Number(conversation);
+                    if (Number.isNaN(cid)) return res.status(400).json({ error: 'invalid_conversation' });
+                    try {
+                        // Use a fresh service with the primary (account) token to attempt incoming visitor message
+                        const visitorService = new ChatwootService(ChatwootApiPlugin.options);
+                        const msg = await visitorService.sendPublicMessage(cid, content);
+                        return res.json({ id: msg.id, content: msg.content, message_type: msg.message_type, side: 'visitor', sender_name: 'You' });
+                    } catch (e: any) {
+                        Logger.error(`${logPrefix} sendPublicMessage failed ${e.message}`);
+                        return res.status(500).json({ error: 'send_failed', message: e.message });
+                    }
+                }
+                // Resolve conversation (toggle status internally)
+                if (req.method === 'POST' && ends('/resolve')) {
+                    const { conversation } = req.body || {};
+                    if (!conversation) return res.status(400).json({ error: 'missing_conversation' });
+                    const cid = Number(conversation);
+                    if (Number.isNaN(cid)) return res.status(400).json({ error: 'invalid_conversation' });
+                    try {
+                        // Direct fetch; no helper yet
+                        const fetchImpl: any = (global as any).fetch || ((): any => { try { const nf = require('node-fetch'); return nf.default || nf; } catch { return undefined; } })();
+                        if (!fetchImpl) throw new Error('fetch_unavailable');
+                        const url = `${ChatwootApiPlugin.options.baseUrl}/api/v1/accounts/${ChatwootApiPlugin.options.accountId}/conversations/${cid}/toggle_status`;
+                        const r = await fetchImpl(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'api_access_token': ChatwootApiPlugin.options.apiToken } });
+                        const raw = await r.text();
+                        if (!r.ok) return res.status(r.status).json({ error: 'resolve_failed', status: r.status, body: raw.slice(0,200) });
+                        return res.json({ resolved: true, conversation: cid });
+                    } catch (e: any) {
+                        Logger.error(`${logPrefix} resolve failed ${e.message}`);
+                        return res.status(500).json({ error: 'resolve_failed', message: e.message });
+                    }
+                }
+                next();
+            } catch (e: any) {
+                Logger.error(`${logPrefix} handler error ${e.message}`);
+                res.status(500).json({ error: e.message });
             }
-        });
+        }
+    });
 
         // Health / diagnostic endpoint
         config.apiOptions.middleware.push({
@@ -361,21 +286,24 @@ start();
             route: '/admin/chatwoot',
             handler: async (req: any, res: any, next: any) => {
                 if (req.path !== '/admin/chatwoot') return next();
-                const html = `<!doctype html><html><head><meta charset=utf-8><title>Agent Chatwoot Console</title><meta name=viewport content="width=device-width,initial-scale=1" />
-<style>body{margin:0;font-family:system-ui,Arial,sans-serif;background:#0b0e11;color:#dde4ee;display:flex;flex-direction:column;height:100vh;}header{padding:10px 16px;background:#141a22;border-bottom:1px solid #1f2730;font-size:14px;font-weight:600;letter-spacing:.5px;}main{flex:1;display:flex;min-height:0;}aside{width:260px;border-right:1px solid #1f2730;display:flex;flex-direction:column;}aside h2{margin:0;padding:10px 14px;font-size:12px;letter-spacing:1px;opacity:.6;}#convs{flex:1;overflow:auto;}#convs button{all:unset;display:block;width:100%;padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #1a222c;}#convs button.active{background:#1d2732;}#messages{flex:1;display:flex;flex-direction:column;overflow:auto;padding:14px;gap:10px;} .bubble{max-width:60%;padding:10px 12px;border-radius:12px;line-height:1.4;font-size:13px;background:#1d2732;box-shadow:0 1px 2px #0006;} .out{align-self:flex-end;background:#2563eb;color:#fff;} footer{border-top:1px solid #1f2730;padding:10px;background:#141a22;display:flex;gap:8px;}footer input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2c3947;background:#1a222c;color:#fff;}footer button{background:#2563eb;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}footer button:disabled{opacity:.4;cursor:not-allowed;} .meta{font-size:11px;opacity:.55;text-align:center;padding:4px 0;} .idtag{opacity:.5;font-size:10px;margin-top:2px;} .err{color:#f87171;font-size:12px;padding:4px 8px;background:#2d1a1a;border:1px solid #f87171;margin:6px 10px;border-radius:6px;}
-</style></head><body><header>Agent Chatwoot Console</header><main><aside><h2>CONVERSATIONS</h2><div id="convErr" class="err" style="display:none"></div><div id="convs"></div></aside><section style="flex:1;display:flex;flex-direction:column;min-width:0;"><div id="messages"></div><div class="meta" id="status">Idle</div><footer><input id="msgInput" placeholder="Type reply..." autocomplete="off"/><button id="sendBtn" disabled>Send</button></footer></section></main><script>
-const el=id=>document.getElementById(id);const convsEl=el('convs');const msgsEl=el('messages');const statusEl=el('status');const input=el('msgInput');const sendBtn=el('sendBtn');const convErr=el('convErr');let current=null;async function fetchJson(u,opt){const r=await fetch(u,opt);const t=await r.text();if(!r.ok) throw new Error(t.slice(0,200));try{return JSON.parse(t);}catch{return t;} }
+                const html = `<!doctype html><html><head><meta charset=utf-8><title>Agent Chatwoot Console</title><meta name=viewport content=\"width=device-width,initial-scale=1\" />
+<style>body{margin:0;font-family:system-ui,Arial,sans-serif;background:#0b0e11;color:#dde4ee;display:flex;flex-direction:column;height:100vh;}header{padding:10px 16px;background:#141a22;border-bottom:1px solid #1f2730;font-size:14px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:12px;}header button.resolve{background:#334155;color:#fff;border:1px solid #475569;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;}header button.resolve:disabled{opacity:.4;cursor:not-allowed;}main{flex:1;display:flex;min-height:0;}aside{width:270px;border-right:1px solid #1f2730;display:flex;flex-direction:column;}aside h2{margin:0;padding:10px 14px;font-size:12px;letter-spacing:1px;opacity:.6;}#convs{flex:1;overflow:auto;}#convs button{all:unset;display:block;width:100%;padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #1a222c;text-align:left;}#convs button.active{background:#1d2732;}#convs button .metaLine{display:block;font-size:11px;opacity:.55;margin-top:2px;}#messages{flex:1;display:flex;flex-direction:column;overflow:auto;padding:14px;gap:10px;} .bubble{max-width:60%;padding:10px 12px;border-radius:12px;line-height:1.4;font-size:13px;background:#1d2732;box-shadow:0 1px 2px #0006;} .out{align-self:flex-end;background:#2563eb;color:#fff;} footer{border-top:1px solid #1f2730;padding:10px;background:#141a22;display:flex;gap:8px;}footer input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2c3947;background:#1a222c;color:#fff;}footer button{background:#2563eb;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}footer button:disabled{opacity:.4;cursor:not-allowed;} .meta{font-size:11px;opacity:.55;text-align:center;padding:4px 0;} .idtag{opacity:.5;font-size:10px;margin-top:2px;} .err{color:#f87171;font-size:12px;padding:4px 8px;background:#2d1a1a;border:1px solid #f87171;margin:6px 10px;border-radius:6px;}
+</style></head><body><header>Agent Chatwoot Console <button class=resolve id=resolveBtn disabled>Resolve</button></header><main><aside><h2>CONVERSATIONS</h2><div id=\"convErr\" class=\"err\" style=\"display:none\"></div><div id=\"convs\"></div></aside><section style=\"flex:1;display:flex;flex-direction:column;min-width:0;\"><div id=\"messages\"></div><div class=\"meta\" id=\"status\">Idle</div><footer><input id=\"msgInput\" placeholder=\"Type reply...\" autocomplete=\"off\"/><button id=\"sendBtn\" disabled>Send</button></footer></section></main><script>
+const el=id=>document.getElementById(id);const convsEl=el('convs');const msgsEl=el('messages');const statusEl=el('status');const input=el('msgInput');const sendBtn=el('sendBtn');const resolveBtn=el('resolveBtn');const convErr=el('convErr');let current=null;async function fetchJson(u,opt){const r=await fetch(u,opt);const t=await r.text();if(!r.ok) throw new Error(t.slice(0,200));try{return JSON.parse(t);}catch{return t;} }
 async function loadConvs(){status('Loading conversations...');try{const list=await fetchJson('/admin/chatwoot/api/conversations');renderConvs(list);}catch(e){convErr.style.display='block';convErr.textContent='Conversations error: '+e.message;} }
-function renderConvs(list){convsEl.innerHTML='';list.forEach(c=>{const b=document.createElement('button');b.textContent='#'+c.id+(c.last_message_content?' • '+c.last_message_content.slice(0,30):'');if(c.id===current) b.classList.add('active');b.onclick=()=>{selectConv(c.id)};convsEl.appendChild(b);}); if(current && !list.find(c=>c.id===current)){current=null;msgsEl.innerHTML='';}}
+function renderConvs(list){convsEl.innerHTML='';list.forEach(c=>{const b=document.createElement('button');b.innerHTML='<strong>#'+c.id+'</strong>'+(c.last_message_content?' <span class=metaLine>'+escapeHtml(c.last_message_content.slice(0,60))+'</span>':'');if(c.id===current) b.classList.add('active');b.onclick=()=>{selectConv(c.id)};convsEl.appendChild(b);}); if(current && !list.find(c=>c.id===current)){current=null;msgsEl.innerHTML='';} resolveBtn.disabled=!current;}
 async function selectConv(id){current=id;updateButtons();await loadMessages();renderConvs(await fetchJson('/admin/chatwoot/api/conversations'));}
 async function loadMessages(){if(!current) return;status('Loading messages...');msgsEl.innerHTML='';try{const list=await fetchJson('/admin/chatwoot/api/conversations/'+current+'/messages');list.forEach(m=>appendMsg(m));status('Conversation #'+current);}catch(e){appendSystem('(Failed to load messages) '+e.message);} }
-function appendMsg(m){const wrap=document.createElement('div');wrap.className='bubble '+(m.message_type==='outgoing'?'out':'in');wrap.innerHTML='<strong>'+(m.message_type==='outgoing'?'Agent':'User')+'</strong><div>'+escapeHtml(m.content||'')+'</div><div class="idtag">'+m.id+'</div>';msgsEl.appendChild(wrap);msgsEl.scrollTop=msgsEl.scrollHeight;}
+function appendMsg(m){const wrap=document.createElement('div');const outgoing=(m.message_type==='outgoing')||(m.direction==='outgoing');
+// FIX: Changed role names for clarity in the agent UI. 'You (Agent)' now refers to the agent, and 'Visitor' to the customer.
+const roleName=outgoing?'You (Agent)':'Visitor';
+wrap.className='bubble '+(outgoing?'out':'in');wrap.innerHTML='<strong>'+roleName+'</strong><div>'+escapeHtml(m.content||'')+'</div><div class="idtag">'+m.id+'</div>';msgsEl.appendChild(wrap);msgsEl.scrollTop=msgsEl.scrollHeight;}
 function appendSystem(t){const w=document.createElement('div');w.className='bubble';w.style.opacity=.6;w.textContent=t;msgsEl.appendChild(w);}
 function escapeHtml(s){return (s||'').replace(/[&<>]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));}
 function status(t){statusEl.textContent=t;}
-async function send(){if(!current||!input.value.trim()) return;const text=input.value.trim();input.value='';updateButtons();appendMsg({content:text,message_type:'outgoing',id:'temp-'+Date.now()});try{await fetchJson('/admin/chatwoot/api/conversations/'+current+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:text})});await loadMessages();}catch(e){appendSystem('(Send failed) '+e.message);} }
-function updateButtons(){sendBtn.disabled=!input.value.trim()||!current;}
-input.addEventListener('input',updateButtons);sendBtn.onclick=()=>send();loadConvs();setInterval(loadConvs,8000);
+function send(){if(!current||!input.value.trim()) return;const text=input.value.trim();input.value='';updateButtons();appendMsg({content:text,message_type:'outgoing',id:'temp-'+Date.now(),direction:'outgoing'});fetchJson('/admin/chatwoot/api/conversations/'+current+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:text})}).then(()=>loadMessages()).catch(e=>appendSystem('(Send failed) '+e.message));}
+function updateButtons(){sendBtn.disabled=!input.value.trim()||!current;resolveBtn.disabled=!current;}
+input.addEventListener('input',updateButtons);sendBtn.onclick=()=>send();resolveBtn.onclick=()=>{if(!current) return;resolveBtn.disabled=true;fetchJson('/chat/api/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conversation:current})}).then(()=>{status('Resolved conversation #'+current);current=null;msgsEl.innerHTML='';loadConvs();}).catch(e=>{appendSystem('(Resolve failed) '+e.message);resolveBtn.disabled=false;});};loadConvs();setInterval(loadConvs,8000);
 </script></html>`;
                 res.type('html').send(html);
             }

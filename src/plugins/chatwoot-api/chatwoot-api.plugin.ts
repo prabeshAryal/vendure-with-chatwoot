@@ -50,6 +50,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
             type ChatwootWidgetConfig {
                 baseUrl: String!
                 websiteToken: String
+                enforceUserIdentity: Boolean!
             }
 
             extend type Query {
@@ -58,6 +59,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 chatwootPublicMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
                 chatwootWidgetConfig: ChatwootWidgetConfig!
                 chatwootMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
+                chatwootIdentityHash(identifier: String!): String!
             }
 
             extend type Mutation {
@@ -65,6 +67,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 createChatwootPublicConversation(input: ChatwootNewConversationInput!): ChatwootConversation!
                 sendChatwootMessage(conversationId: ID!, content: String!, messageType: String = "outgoing"): ChatwootMessageResult!
                 sendChatwootPublicMessage(conversationId: ID!, content: String!): ChatwootMessageResult!
+                resolveChatwootConversation(conversationId: ID!): Boolean!
             }
             `,
         resolvers: [ChatwootResolver],
@@ -86,19 +89,21 @@ import { ChatwootResolver } from './chatwoot.resolver';
             }
             type ChatwootMessageResult { id: ID! content: String }
             type ChatwootMessage { id: ID! content: String message_type: String sender_type: String direction: String isAdmin: Boolean! isAnonymous: Boolean! }
-            type ChatwootWidgetConfig { baseUrl: String! websiteToken: String }
+            type ChatwootWidgetConfig { baseUrl: String! websiteToken: String enforceUserIdentity: Boolean! }
             extend type Query {
                 chatwootConversations(limit: Int = 10): [ChatwootConversation!]!
                 chatwootPublicConversation(sourceId: String!): ChatwootConversation
                 chatwootPublicMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
                 chatwootWidgetConfig: ChatwootWidgetConfig!
                 chatwootMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
+                chatwootIdentityHash(identifier: String!): String!
             }
             extend type Mutation {
                 createChatwootConversation(input: ChatwootNewConversationInput!): ChatwootConversation!
                 createChatwootPublicConversation(input: ChatwootNewConversationInput!): ChatwootConversation!
                 sendChatwootMessage(conversationId: ID!, content: String!, messageType: String = "outgoing"): ChatwootMessageResult!
                 sendChatwootPublicMessage(conversationId: ID!, content: String!): ChatwootMessageResult!
+                resolveChatwootConversation(conversationId: ID!): Boolean!
             }
         `,
         resolvers: [ChatwootResolver],

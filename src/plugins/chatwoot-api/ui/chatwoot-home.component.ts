@@ -21,26 +21,31 @@ const M_SEND = gql`mutation($id:ID!,$content:String!){ sendChatwootMessage(conve
       </div>
       <div *ngIf="loading()" style="padding:6px;">Loading...</div>
       <ul style="list-style:none; margin:0; padding:0;">
-        <li *ngFor="let c of conversations()" (click)="select(c)" [style.background]= "c.id===selectedId()? '#eef':'transparent'" style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
-          <div style="font-weight:bold;">#{{c.id}}</div>
-          <div style="font-size:12px; color:#666;" *ngIf="c.last_message_content">{{c.last_message_content | slice:0:40}}...</div>
-          <div style="font-size:10px; color:#999;" *ngIf="c.updated_at">{{c.updated_at | date:'short'}}</div>
+        <li *ngFor="let c of conversations()" (click)="select(c)" [style.background]= "c.id===selectedId()? '#e3f2fd':'transparent'" style="padding:10px 8px; cursor:pointer; border-bottom:1px solid #e0e0e0; border-radius:6px; margin-bottom:2px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:bold; color:#1976d2;">#{{c.id}}</span>
+            <span *ngIf="c.status==='resolved'" style="background:#c8e6c9; color:#388e3c; font-size:11px; padding:2px 8px; border-radius:8px;">Resolved</span>
+            <span *ngIf="c.status!=='resolved'" style="background:#fff9c4; color:#fbc02d; font-size:11px; padding:2px 8px; border-radius:8px;">Open</span>
+            <button *ngIf="c.status!=='resolved'" (click)="$event.stopPropagation(); resolve(c)" style="margin-left:auto; background:#388e3c; color:#fff; border:none; border-radius:6px; font-size:11px; padding:2px 10px; cursor:pointer;">Resolve</button>
+          </div>
+          <div style="font-size:13px; color:#444; margin-top:2px;" *ngIf="c.last_message_content">{{c.last_message_content | slice:0:40}}...</div>
+          <div style="font-size:10px; color:#888; margin-top:2px;" *ngIf="c.updated_at">{{c.updated_at | date:'short'}}</div>
         </li>
       </ul>
     </div>
     <div style="flex:1; display:flex; flex-direction:column;">
-      <div style="flex:1; overflow:auto; padding:8px; background:#fafafa;">
+  <div style="flex:1; overflow:auto; padding:16px; background:#f5f7fa; border-radius:8px;">
         <div *ngIf="!selectedId()" style="color:#666;">Select or create a conversation.</div>
-        <div *ngFor="let m of messages()" style="margin:4px 0;">
-          <div [style.background]="m.isAdmin ? '#d8f5d0':'#fff'" [style.borderColor]="m.isAdmin ? '#8bc34a':'#ddd'" style="display:inline-block; padding:6px 8px; border:1px solid #ddd; border-radius:6px; max-width:70%; white-space:pre-wrap;">
-            <small style="display:block; font-size:10px; color:#666; margin-bottom:2px;">{{ m.isAdmin ? 'ADMIN' : 'ANON' }}</small>
+        <div *ngFor="let m of messages()" style="margin:8px 0; display:flex;">
+          <div [style.background]="m.isAdmin ? '#e3fcec':'#fff'" [style.borderColor]="m.isAdmin ? '#43a047':'#bdbdbd'" style="padding:10px 14px; border:1px solid; border-radius:10px; max-width:70%; white-space:pre-wrap; box-shadow:0 2px 8px -2px #1976d255;">
+            <small style="display:block; font-size:11px; color:#1976d2; margin-bottom:2px; font-weight:600;">{{ m.isAdmin ? 'Support' : 'Visitor' }}</small>
             {{ m.content }}
           </div>
         </div>
       </div>
-      <form (submit)="send($event)" style="display:flex; gap:4px; border-top:1px solid #ccc; padding:6px;">
-        <input type="text" [(ngModel)]="draft" name="draft" placeholder="Type message..." style="flex:1; padding:6px;" [disabled]="!selectedId()">
-        <button type="submit" [disabled]="!draft || !selectedId()">Send</button>
+      <form (submit)="send($event)" style="display:flex; gap:8px; border-top:1px solid #e0e0e0; padding:12px 0; background:#f5f7fa; border-radius:0 0 8px 8px;">
+        <input type="text" [(ngModel)]="draft" name="draft" placeholder="Type message..." style="flex:1; padding:10px 14px; border-radius:8px; border:1px solid #bdbdbd; font-size:15px;" [disabled]="!selectedId()">
+        <button type="submit" [disabled]="!draft || !selectedId()" style="background:#1976d2; color:#fff; border:none; border-radius:8px; padding:0 24px; font-size:15px; font-weight:600; cursor:pointer;">Send</button>
       </form>
     </div>
   </div>
@@ -61,12 +66,18 @@ export class ChatwootHomeComponent implements OnDestroy {
 
   reload() {
     this.loading.set(true);
-    this.apollo.query({ query: Q_CONVS, variables: { limit: 25 }, fetchPolicy: 'network-only' })
+    this.apollo.query({ query: Q_CONVS, variables: { limit: 1000 }, fetchPolicy: 'network-only' })
       .subscribe((res: any) => {
         this.conversations.set(res.data.chatwootConversations ?? []);
         this.loading.set(false);
       });
     if (this.selectedId()) this.loadMessages(this.selectedId()!);
+  }
+
+  resolve(conv: any) {
+    if (!conv?.id) return;
+    this.apollo.mutate({ mutation: gql`mutation($id:ID!){ resolveChatwootConversation(conversationId:$id) }`, variables: { id: conv.id } })
+      .subscribe(() => this.reload());
   }
 
   select(c: any) {

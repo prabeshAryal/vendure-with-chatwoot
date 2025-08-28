@@ -22,11 +22,15 @@ export class ChatwootService {
     private static availableAgents: any[] = [];
     private static cacheLoaded = false;
     private static cacheFile = path.join(process.cwd(), 'chatwoot-cache.json');
+    // Throttle & diagnostics helpers
+    private static lastFetch: Map<number, number> = new Map();
+    private static fallbackLogCounts: Map<number, number> = new Map();
     constructor(private readonly options: PluginInitOptions) {}
 
     private headers() {
         return {
             'Content-Type': 'application/json',
+            // Prefer agent token if performing admin/agent operations downstream; default to primary token
             'api_access_token': this.options.apiToken,
         } as Record<string, string>;
     }
@@ -163,11 +167,12 @@ export class ChatwootService {
         }
     }
 
-    async sendMessage(conversationId: number, content: string, messageType: 'outgoing' | 'incoming' = 'outgoing') {
+    async sendMessage(conversationId: number, content: string, messageType: 'outgoing' | 'incoming' = 'outgoing', extra?: { content_attributes?: any }) {
     await this.ensureCacheLoaded();
         const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages`;
         this.log('Sending Chatwoot message', { conversationId, messageType });
-        const body = { content, message_type: messageType };
+        const body: any = { content, message_type: messageType };
+        if (extra?.content_attributes) body.content_attributes = extra.content_attributes;
     const res = await fetchFn(url, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) });
         if (!res.ok) {
             const text = await res.text();
@@ -236,6 +241,9 @@ export class ChatwootService {
                 contact_id: c.contact_id || c.contact?.id,
                 last_message_content: lastMessageContent,
                 updated_at,
+                status: c.status || c.resolved ? (c.resolved ? 'resolved' : 'open') : (c.status || 'open'),
+                resolved: !!c.resolved,
+                meta: c.meta || {},
             };
         });
         this.log('Conversations normalized', { count: mapped.length });
@@ -248,10 +256,45 @@ export class ChatwootService {
         return mapped;
     }
 
+    async getConversation(id: number): Promise<any | undefined> {
+        await this.ensureCacheLoaded();
+        try {
+            const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${id}`;
+            const res = await fetchFn(url, { headers: this.headers() });
+            if (!res.ok) {
+                if (res.status === 404) return undefined;
+                const text = await res.text();
+                throw new Error(`Chatwoot getConversation failed: ${res.status} ${text}`);
+            }
+            const json: any = await res.json();
+            // Normalize minimal fields we rely on
+            return {
+                id: json.id,
+                status: json.status || (json.resolved ? 'resolved' : 'open'),
+                resolved: !!json.resolved || json.status === 'resolved',
+                inbox_id: json.inbox_id,
+                contact_id: json.contact_id || json.contact?.id,
+                source_id: json.source_id,
+                meta: json.meta || {},
+            };
+        } catch (e) {
+            this.log('getConversation error', { id, error: (e as Error).message });
+            throw e;
+        }
+    }
+
     async listMessages(conversationId: number, limit = 20) {
         await this.ensureCacheLoaded();
+        const now = Date.now();
+        const last = ChatwootService.lastFetch.get(conversationId) || 0;
+        const existingMapPre = ChatwootService.memoryMessages.get(conversationId);
+        // Throttle remote call if fetched very recently (<1.5s) and we have cache
+        if (existingMapPre && existingMapPre.size && now - last < 1500) {
+            const cachedItems = Array.from(existingMapPre.values());
+            return this.decorateMessages(conversationId, cachedItems, limit);
+        }
         const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
-        this.log('Listing Chatwoot messages', { conversationId, limit });
+        this.log('Listing Chatwoot messages', { conversationId, limit, throttled: now - last < 1500 ? 'skip-remote' : 'remote' });
         const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
             const text = await res.text();
@@ -276,31 +319,92 @@ export class ChatwootService {
         else if (Array.isArray(json?.payload)) items = json.payload; // Chatwoot payload form
 
         const existingMap = ChatwootService.memoryMessages.get(conversationId) ?? new Map<number, any>();
-        if (!items.length && existingMap.size) {
-            this.log('Using in-memory message cache fallback', { conversationId, count: existingMap.size });
-            items = Array.from(existingMap.values());
-        } else if (items.length) {
+        if (!items.length) {
+            if (existingMap.size) {
+                // Controlled fallback logging
+                const count = (ChatwootService.fallbackLogCounts.get(conversationId) || 0) + 1;
+                ChatwootService.fallbackLogCounts.set(conversationId, count);
+                if (count === 1 || count % 10 === 0) {
+                    this.log('Using in-memory message cache fallback', { conversationId, count: existingMap.size, repeats: count });
+                }
+                items = Array.from(existingMap.values());
+            } else {
+                // First time empty remote: log diagnostic sample
+                this.log('Remote returned zero messages (no cache)', { conversationId, rawKeys: Object.keys(json || {}) });
+            }
+        } else {
+            // Reset fallback counter when we have remote data
+            if (ChatwootService.fallbackLogCounts.has(conversationId)) {
+                ChatwootService.fallbackLogCounts.delete(conversationId);
+            }
             items.forEach(m => { if (m?.id) existingMap.set(m.id, m); });
             ChatwootService.memoryMessages.set(conversationId, existingMap);
             this.persistCache();
             items = Array.from(existingMap.values());
         }
+        ChatwootService.lastFetch.set(conversationId, Date.now());
+        return this.decorateMessages(conversationId, items, limit);
+    }
 
+    // Always fetch remote (no throttle) for real-time public chat refreshes
+    async listMessagesFresh(conversationId: number, limit = 20) {
+        await this.ensureCacheLoaded();
+        const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
+        const res = await fetchFn(url, { headers: this.headers() });
+        if (!res.ok) {
+            const text = await res.text();
+            if (res.status === 404) return [];
+            throw new Error(`Chatwoot listMessagesFresh failed: ${res.status} ${text}`);
+        }
+        const json: any = await res.json();
+        let items: any[] = [];
+        if (Array.isArray(json)) items = json; else if (Array.isArray(json?.data)) items = json.data; else if (Array.isArray(json?.payload)) items = json.payload;
+        const existingMap = ChatwootService.memoryMessages.get(conversationId) ?? new Map<number, any>();
+        if (items.length) {
+            items.forEach(m => { if (m?.id) existingMap.set(m.id, m); });
+            ChatwootService.memoryMessages.set(conversationId, existingMap);
+            this.persistCache();
+            items = Array.from(existingMap.values());
+        } else {
+            items = Array.from(existingMap.values());
+        }
+        // Attempt to filter out pre-session history: find earliest visitor message (incoming) treated as session start
+        const decorated = this.decorateMessages(conversationId, items, limit * 2); // decorate with larger window
+        let sessionStart = 0;
+        for (const m of decorated) {
+            if (m.message_type === 'incoming') { sessionStart = m.created_at_ms || 0; break; }
+        }
+        const filtered = sessionStart ? decorated.filter(m => (m.created_at_ms || 0) >= sessionStart) : decorated;
+        // Slice again to final limit
+        return filtered.length > limit ? filtered.slice(filtered.length - limit) : filtered;
+    }
+
+    private decorateMessages(conversationId: number, items: any[], limit: number) {
         const decorated = items.map(m => {
+            const original_message_type = m.message_type;
             let mt = m.message_type;
             if (typeof mt === 'number') mt = mt === 1 ? 'outgoing' : (mt === 0 ? 'incoming' : 'note');
-            const direction = m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming');
+            if (mt === 'outgoing' && m?.content_attributes?.public_user) {
+                mt = 'incoming';
+            }
+            // Normalize created_at (Chatwoot gives seconds). Add created_at_ms for correct ordering without mutating original value.
+            const created_at_raw = m.created_at;
+            const created_at_ms = typeof created_at_raw === 'number' && created_at_raw < 1e12 ? created_at_raw * 1000 : created_at_raw;
+            const direction = mt === 'incoming' ? 'incoming' : (m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming'));
             return {
                 ...m,
                 message_type: mt,
                 direction,
                 isAdmin: typeof m.isAdmin === 'boolean' ? m.isAdmin : direction === 'outgoing',
                 isAnonymous: typeof m.isAnonymous === 'boolean' ? m.isAnonymous : direction === 'incoming',
+                sender: m.sender,
+                original_message_type,
+                created_at_ms,
             };
         }).sort((a, b) => {
-            const at = new Date(a.created_at || 0).getTime();
-            const bt = new Date(b.created_at || 0).getTime();
-            if (at && bt && at !== bt) return at - bt;
+            const at = a.created_at_ms || 0;
+            const bt = b.created_at_ms || 0;
+            if (at !== bt) return at - bt;
             return (a.id ?? 0) - (b.id ?? 0);
         });
         return decorated.length > limit ? decorated.slice(decorated.length - limit) : decorated;
@@ -443,7 +547,16 @@ export class ChatwootService {
     }
 
     async sendPublicMessage(conversationId: number, content: string) {
-        return this.sendMessage(conversationId, content, 'incoming'); // Public = incoming
+        try {
+            return await this.sendMessage(conversationId, content, 'incoming');
+        } catch (e: any) {
+            const msg = String(e.message || '');
+            if (/Incoming messages are only allowed/i.test(msg) || /\b422\b/.test(msg)) {
+                this.log('Fallback: resending public message as outgoing with public_user flag', { conversationId });
+                return await this.sendMessage(conversationId, content, 'outgoing', { content_attributes: { public_user: true, original_type: 'incoming_attempt' } });
+            }
+            throw e;
+        }
     }
 
     async sendAdminMessage(conversationId: number, content: string) {
@@ -452,7 +565,24 @@ export class ChatwootService {
         if (agent) {
             this.log('Admin message sent by agent', { agentId: agent.id, agentName: agent.name });
         }
-        return this.sendMessage(conversationId, content, 'outgoing'); // Admin = outgoing
+        // Temporarily swap token if agentApiToken is configured to attribute message to an agent user
+        if (this.options.agentApiToken) {
+            const original = this.options.apiToken;
+            const originalAcct = this.options.accountId;
+            try {
+                (this.options as any).apiToken = this.options.agentApiToken;
+                if (this.options.agentAccountId) {
+                    (this.options as any).accountId = this.options.agentAccountId;
+                }
+                return await this.sendMessage(conversationId, content, 'outgoing');
+            } finally {
+                (this.options as any).apiToken = original;
+                if (this.options.agentAccountId) {
+                    (this.options as any).accountId = originalAcct;
+                }
+            }
+        }
+        return this.sendMessage(conversationId, content, 'outgoing'); // Fallback
     }
 
     // Enhanced agent management
@@ -572,8 +702,10 @@ export class ChatwootService {
         const decorated = items.map(m => {
             let mt = m.message_type;
             if (typeof mt === 'number') mt = mt === 1 ? 'outgoing' : (mt === 0 ? 'incoming' : 'note');
-            const direction = m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming');
-            
+            if (mt === 'outgoing' && m?.content_attributes?.public_user) {
+                mt = 'incoming';
+            }
+            const direction = mt === 'incoming' ? 'incoming' : (m.direction || mt || (m.sender_type && /agent/i.test(m.sender_type) ? 'outgoing' : 'incoming'));
             return {
                 ...m,
                 message_type: mt,
