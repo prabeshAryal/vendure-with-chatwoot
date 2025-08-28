@@ -305,7 +305,7 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                     try {
                         // Only use live API messages, no cache
                         const msgs: any[] = await chatwootService.listMessagesFresh(cid, 120);
-                        Logger.info('[ChatFeaturePlugin] Raw service output from listMessagesFresh (API only): ' + JSON.stringify(msgs));
+                        // Logger.info('[ChatFeaturePlugin] Raw service output from listMessagesFresh (API only): ' + JSON.stringify(msgs));
                         const mapped = msgs.map((m: any) => ({
                             id: m.id,
                             content: m.content,
@@ -316,9 +316,9 @@ let rapid=5; const rapidTimer=setInterval(()=>{ if(rapid--<=0){ clearInterval(ra
                             side: m.side,
                             sender_name: m.side === 'visitor' ? 'You' : 'Agent'
                         }));
-                        Logger.info('[ChatFeaturePlugin] Mapped array for /chat/api/messages (API only): ' + JSON.stringify(mapped));
+                        // Logger.info('[ChatFeaturePlugin] Mapped array for /chat/api/messages (API only): ' + JSON.stringify(mapped));
                         mapped.sort((a: any, b: any) => (a.created_at_ms || a.created_at || 0) - (b.created_at_ms || b.created_at || 0));
-                        Logger.info('[ChatFeaturePlugin] Final sorted response for /chat/api/messages (API only): ' + JSON.stringify(mapped));
+                        // Logger.info('[ChatFeaturePlugin] Final sorted response for /chat/api/messages (API only): ' + JSON.stringify(mapped));
                         return res.json(mapped);
                     } catch (e: any) {
                         Logger.error(`${logPrefix} listMessages failed ${e.message}`);

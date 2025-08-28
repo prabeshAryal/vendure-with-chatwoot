@@ -14,6 +14,7 @@ if (typeof fetchFn !== 'function') {
 }
 import { loggerCtx } from './constants';
 import { ChatwootNewConversationInput, PluginInitOptions } from './types';
+import { threadCpuUsage } from 'process';
 
 export class ChatwootService {
     private static memoryConversations: Array<{ id: number; inbox_id?: number; contact_id?: number; source_id?: string }> = [];
@@ -36,9 +37,7 @@ export class ChatwootService {
     }
 
     private log(message: string, meta?: any) {
-        if (this.options.enableLogging) {
-            Logger.info(message + (meta ? ' ' + JSON.stringify(meta) : ''), loggerCtx);
-        }
+        // Logging removed for production cleanliness
     }
 
     private async ensureCacheLoaded() {
@@ -69,10 +68,7 @@ export class ChatwootService {
                 if (parsed.contacts && typeof parsed.contacts === 'object') {
                     ChatwootService.memoryContacts = new Map(Object.entries(parsed.contacts));
                 }
-                this.log('Loaded Chatwoot cache from disk', { 
-                    conversations: ChatwootService.memoryConversations.length,
-                    contacts: ChatwootService.memoryContacts.size 
-                });
+                // Logging removed
             }
             // Load available agents on startup
             await this.refreshAgents();
@@ -114,7 +110,7 @@ export class ChatwootService {
                 contact_id: contactId,
                 source_id: input.sourceId,
             };
-            this.log('Request body', body);
+            // this.log('Request body', body);
             const res = await fetchFn(url, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) });
             if (!res.ok) {
                 const text = await res.text();
@@ -209,8 +205,10 @@ export class ChatwootService {
             throw new Error(`Chatwoot listConversations failed: ${res.status} ${text}`);
         }
         const json: any = await res.json();
+        this.log('Raw Chatwoot API response', json);
         let items: any[] = [];
         if (Array.isArray(json)) items = json;
+        else if (Array.isArray(json?.data?.payload)) items = json.data.payload;
         else if (Array.isArray(json?.data)) items = json.data;
         else if (Array.isArray(json?.payload?.data)) items = json.payload.data;
         else if (Array.isArray(json?.payload?.conversations)) items = json.payload.conversations;
@@ -246,7 +244,7 @@ export class ChatwootService {
                 meta: c.meta || {},
             };
         });
-        this.log('Conversations normalized', { count: mapped.length });
+        // this.log('Conversations normalized', { count: mapped.length });
         mapped.forEach(c => {
             if (c?.id && !ChatwootService.memoryConversations.find(mc => mc.id === c.id)) {
                 ChatwootService.memoryConversations.push({ id: c.id, inbox_id: c.inbox_id, contact_id: c.contact_id });
@@ -285,7 +283,7 @@ export class ChatwootService {
 
     async listMessages(conversationId: number, limit = 20) {
     const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?page=1&per_page=${limit}`;
-        this.log('Listing Chatwoot messages', { conversationId, limit });
+        // this.log('Listing Chatwoot messages', { conversationId, limit });
         const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
             const text = await res.text();
@@ -312,17 +310,17 @@ export class ChatwootService {
             throw new Error(`Chatwoot listMessagesFresh failed: ${res.status} ${text}`);
         }
         const rawText = await res.clone().text();
-        this.log('Raw Chatwoot API response', { url, rawText });
+        // this.log('Raw Chatwoot API response', { url, rawText });
         const json: any = await res.json();
-        this.log('Parsed Chatwoot API response', { url, keys: Object.keys(json), sample: Array.isArray(json?.payload) ? json.payload.slice(0,3) : json });
+        // this.log('Parsed Chatwoot API response', { url, keys: Object.keys(json), sample: Array.isArray(json?.payload) ? json.payload.slice(0,3) : json });
         let items: any[] = [];
         if (Array.isArray(json?.payload)) items = json.payload;
         else if (Array.isArray(json)) items = json;
         else if (Array.isArray(json?.data)) items = json.data;
-        this.log('Extracted items for decoration', { count: items.length, ids: items.map(m=>m.id) });
+        // this.log('Extracted items for decoration', { count: items.length, ids: items.map(m=>m.id) });
         // Only use live API items, no cache fallback or merge
         const decorated = this.decorateMessages(conversationId, items, limit * 2);
-        this.log('Decorated messages', { count: decorated.length, ids: decorated.map(m=>m.id), sample: decorated.slice(0,3) });
+        // this.log('Decorated messages', { count: decorated.length, ids: decorated.map(m=>m.id), sample: decorated.slice(0,3) });
         return decorated;
     }
 
@@ -612,7 +610,6 @@ export class ChatwootService {
     async listMessagesWithMeta(conversationId: number, limit = 20): Promise<{ messages: any[], meta?: any }> {
         await this.ensureCacheLoaded();
         const url = `${this.options.baseUrl}/api/v1/accounts/${this.options.accountId}/conversations/${conversationId}/messages?after=0&before=0&page=1&per_page=${limit}`;
-        this.log('Listing Chatwoot messages with metadata', { conversationId, limit });
         
     const res = await fetchFn(url, { headers: this.headers() });
         if (!res.ok) {
@@ -624,34 +621,19 @@ export class ChatwootService {
         let items: any[] = [];
         let meta: any = {};
         
-        // FIX: The primary bug is here. The API returns { payload: [messages], meta: {...} }.
-        // The old code had flawed detection logic. This now correctly and exclusively checks for the `payload` key.
         if (json?.payload && Array.isArray(json.payload)) {
             items = json.payload;
             meta = json.meta || {};
+        } else if (Array.isArray(json?.data)) {
+            items = json.data;
         } else if (Array.isArray(json)) {
-            // Fallback for older or different API versions
             items = json;
         }
 
-        // Apply same caching logic as listMessages
-        const existingMap = ChatwootService.memoryMessages.get(conversationId) ?? new Map<number, any>();
-        if (!items.length && existingMap.size) {
-            this.log('Using in-memory message cache fallback', { conversationId, count: existingMap.size });
-            items = Array.from(existingMap.values());
-        } else if (items.length) {
-            items.forEach(m => { if (m?.id) existingMap.set(m.id, m); });
-            ChatwootService.memoryMessages.set(conversationId, existingMap);
-            this.persistCache();
-            items = Array.from(existingMap.values());
-        }
-
-        // Enhanced message decoration with sender information
         const decorated = items.map(m => {
-            const isOutgoing = m.message_type === 1 || m.sender?.type === 'user';
+            const isOutgoing = m.message_type === 1;
             let direction = isOutgoing ? 'outgoing' : 'incoming';
 
-            // Allow overriding for public anonymous messages sent via admin endpoint
             if (direction === 'outgoing' && m?.content_attributes?.public_user) {
                 direction = 'incoming';
             }

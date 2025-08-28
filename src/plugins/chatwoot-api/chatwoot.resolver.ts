@@ -29,7 +29,7 @@ export class ChatwootResolver {
 
     @Query('chatwootMessages')
     async chatwootMessages(@Args('conversationId') conversationId: string, @Args('limit') limit?: number) {
-        return this.chatwootService.listMessages(Number(conversationId), limit ?? 20);
+        return this.chatwootService.listMessagesWithMeta(Number(conversationId), limit ?? 50);
     }
 
     @Mutation('sendChatwootMessage')

@@ -24,6 +24,8 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 contact_id: Int
                 last_message_content: String
                 updated_at: String
+                status: String
+                resolved: Boolean
             }
 
             input ChatwootNewConversationInput {
@@ -40,11 +42,18 @@ import { ChatwootResolver } from './chatwoot.resolver';
             type ChatwootMessage {
                 id: ID!
                 content: String
+                created_at: String
                 message_type: String
                 sender_type: String
                 direction: String
+                sender_name: String
+                sender_avatar: String
                 isAdmin: Boolean!
                 isAnonymous: Boolean!
+            }
+
+            type ChatwootMessageList {
+                messages: [ChatwootMessage!]!
             }
 
             type ChatwootWidgetConfig {
@@ -58,7 +67,7 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 chatwootPublicConversation(sourceId: String!): ChatwootConversation
                 chatwootPublicMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
                 chatwootWidgetConfig: ChatwootWidgetConfig!
-                chatwootMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
+                chatwootMessages(conversationId: ID!, limit: Int = 20): ChatwootMessageList!
                 chatwootIdentityHash(identifier: String!): String!
             }
 
@@ -80,6 +89,8 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 contact_id: Int
                 last_message_content: String
                 updated_at: String
+                status: String
+                resolved: Boolean
             }
             input ChatwootNewConversationInput {
                 sourceId: String!
@@ -88,14 +99,15 @@ import { ChatwootResolver } from './chatwoot.resolver';
                 initialMessage: String
             }
             type ChatwootMessageResult { id: ID! content: String }
-            type ChatwootMessage { id: ID! content: String message_type: String sender_type: String direction: String isAdmin: Boolean! isAnonymous: Boolean! }
+            type ChatwootMessage { id: ID! content: String created_at: String message_type: String sender_type: String direction: String sender_name: String sender_avatar: String isAdmin: Boolean! isAnonymous: Boolean! }
+            type ChatwootMessageList { messages: [ChatwootMessage!]! }
             type ChatwootWidgetConfig { baseUrl: String! websiteToken: String enforceUserIdentity: Boolean! }
             extend type Query {
                 chatwootConversations(limit: Int = 10): [ChatwootConversation!]!
                 chatwootPublicConversation(sourceId: String!): ChatwootConversation
                 chatwootPublicMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
                 chatwootWidgetConfig: ChatwootWidgetConfig!
-                chatwootMessages(conversationId: ID!, limit: Int = 20): [ChatwootMessage!]!
+                chatwootMessages(conversationId: ID!, limit: Int = 20): ChatwootMessageList!
                 chatwootIdentityHash(identifier: String!): String!
             }
             extend type Mutation {
